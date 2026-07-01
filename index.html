@@ -1,0 +1,3034 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>לוח ייעוץ פיננסי</title>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;600;700;900&family=Heebo:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{direction:rtl;font-family:'Heebo',sans-serif;background:#13181A;color:#E6E4DC;min-height:100vh;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-thumb{background:#2A3338;border-radius:3px;}
+input,select,textarea{font-family:'Heebo',sans-serif;background:#1A2024;border:1px solid #2A3338;color:#E6E4DC;border-radius:6px;padding:8px 12px;font-size:14px;width:100%;outline:none;}
+input:focus,select:focus,textarea:focus{border-color:#6FA88A;}
+input::placeholder{color:#5E6A66;}
+button{font-family:'Heebo',sans-serif;cursor:pointer;border:none;background:none;color:inherit;}
+.mono{font-family:'Roboto Mono',monospace;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+.fi{animation:fadeIn .2s ease-out;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.spin{animation:spin 1s linear infinite;display:inline-block;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+.pu{animation:pulse 2s infinite;}
+.hidden{display:none!important;}
+/* Layout */
+.layout{display:flex;min-height:calc(100vh - 53px);}
+.sidebar{width:280px;flex-shrink:0;border-left:1px solid #2A3338;padding:14px;overflow-y:auto;max-height:calc(100vh - 53px);}
+.main-content{flex:1;padding:24px;overflow-y:auto;max-height:calc(100vh - 53px);}
+@media(max-width:768px){.layout{flex-direction:column;}.sidebar{width:100%;max-height:260px;border-left:none;border-bottom:1px solid #2A3338;}.main-content{padding:16px;}}
+/* Cards */
+.card{background:#1F272B;border:1px solid #2A3338;border-radius:11px;padding:16px;}
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:13.5px;font-weight:600;cursor:pointer;border:1px solid #2A3338;background:#1A2024;color:#E6E4DC;transition:opacity .15s;}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+.btn-accent{background:#6FA88A;color:#0E1413;border-color:#6FA88A;}
+.btn-crit{background:#B5483F;color:#fff;border-color:#B5483F;}
+.btn-admin{background:#8B6FBB;color:#fff;border-color:#8B6FBB;}
+.btn-ghost{background:transparent;color:#96A09C;border-color:#2A3338;}
+.btn-sm{padding:5px 11px;font-size:13px;}
+.btn-lg{padding:12px 24px;font-size:15px;}
+/* Badges */
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:2px 9px;border-radius:100px;font-weight:500;white-space:nowrap;}
+.badge-default{background:#1F272B;color:#96A09C;border:1px solid #2A3338;}
+.badge-crit{background:rgba(181,72,63,.12);color:#B5483F;border:1px solid #7A302A;}
+.badge-warn{background:rgba(201,123,74,.12);color:#C97B4A;border:1px solid #8A5330;}
+.badge-accent{background:rgba(111,168,138,.12);color:#6FA88A;border:1px solid #4C7863;}
+.badge-admin{background:rgba(139,111,187,.12);color:#8B6FBB;border:1px solid #5E4A80;}
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(8,11,12,.78);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;z-index:200;padding:20px;}
+.modal-box{background:#1A2024;border:1px solid #2A3338;border-radius:14px;width:100%;max-width:640px;padding:28px;max-height:90vh;display:flex;flex-direction:column;}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
+.modal-body{overflow-y:auto;flex:1;}
+/* Health bar */
+.health-bar{display:flex;height:6px;border-radius:3px;overflow:hidden;}
+/* Form */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:4px;}
+.form-label{font-size:12px;color:#96A09C;margin-bottom:4px;display:block;}
+.form-row{display:flex;gap:7px;margin-bottom:6px;align-items:center;}
+.form-section{font-family:'Frank Ruhl Libre',serif;font-size:14px;font-weight:600;margin:18px 0 9px;}
+/* Stat card */
+.stat-card{background:#1F272B;border:1px solid #2A3338;border-radius:9px;padding:11px 13px;flex:1;min-width:120px;}
+.stat-label{font-size:11px;color:#96A09C;margin-bottom:4px;}
+.stat-value{font-family:'Roboto Mono',monospace;font-size:18px;font-weight:600;}
+/* Nav */
+.nav-btn{display:flex;align-items:center;gap:5px;padding:6px 11px;border-radius:8px;font-size:13px;font-weight:600;background:transparent;color:#96A09C;border:none;position:relative;}
+.nav-btn.active{background:#1F272B;color:#E6E4DC;border:1px solid #364044;}
+.nav-badge{position:absolute;top:1px;left:1px;width:15px;height:15px;border-radius:50%;background:#B5483F;font-size:9px;color:#fff;display:flex;align-items:center;justify-content:center;}
+/* Issue card */
+.issue-card{display:flex;gap:10px;padding:11px 14px;border-radius:9px;margin-bottom:8px;}
+.issue-crit{background:rgba(181,72,63,.08);border:1px solid #7A302A;}
+.issue-warn{background:rgba(201,123,74,.08);border:1px solid #8A5330;}
+.issue-info{background:#1F272B;border:1px solid #2A3338;}
+/* Back button */
+.back-btn{display:inline-flex;align-items:center;gap:5px;color:#96A09C;font-size:13.5px;padding:6px 12px;border-radius:8px;border:1px solid #2A3338;background:transparent;margin-bottom:16px;cursor:pointer;}
+/* Folder item */
+.folder-item{width:100%;text-align:right;padding:8px 11px;border-radius:7px;background:transparent;border:1px solid transparent;margin-bottom:2px;cursor:pointer;display:block;}
+.folder-item.active{background:#242D32;border-color:#364044;}
+/* Loading */
+#loading{position:fixed;inset:0;background:#13181A;display:flex;align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:16px;}
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="spin" style="width:40px;height:40px;border:3px solid #2A3338;border-top-color:#6FA88A;border-radius:50%;"></div>
+  <p style="color:#96A09C;font-size:14px;">מתחבר למערכת…</p>
+</div>
+
+<div id="app" class="hidden">
+
+<!-- LOGIN -->
+<div id="page-login" style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;">
+  <div style="width:100%;max-width:420px;" class="fi">
+    <div style="text-align:center;margin-bottom:28px;">
+      <div style="width:52px;height:52px;border-radius:12px;background:#1A2024;border:1px solid #2A3338;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:22px;">🛡️</div>
+      <h1 style="font-family:'Frank Ruhl Libre',serif;font-size:24px;font-weight:700;margin:0 0 5px;">לוח ייעוץ פיננסי</h1>
+      <p style="color:#96A09C;font-size:13px;">מערכת ניהול לקוחות ויועצים</p>
+    </div>
+
+    <!-- טאבים -->
+    <div style="display:flex;gap:5px;margin-bottom:18px;background:#1F272B;border-radius:10px;padding:4px;">
+      <button onclick="setAuthTab('login')" id="auth-tab-login" style="flex:1;padding:8px 0;border-radius:7px;font-size:13px;font-weight:600;background:#1A2024;color:#E6E4DC;border:1px solid #2A3338;">כניסה</button>
+      <button onclick="setAuthTab('register')" id="auth-tab-register" style="flex:1;padding:8px 0;border-radius:7px;font-size:13px;font-weight:600;background:transparent;color:#96A09C;border:none;">הרשמה</button>
+      <button onclick="setAuthTab('reset')" id="auth-tab-reset" style="flex:1;padding:8px 0;border-radius:7px;font-size:13px;font-weight:600;background:transparent;color:#96A09C;border:none;">שכחתי סיסמה</button>
+    </div>
+
+    <!-- כניסה -->
+    <div id="auth-form-login">
+      <div style="display:flex;flex-direction:column;gap:11px;">
+        <div><label class="form-label">כתובת מייל</label><input type="email" id="login-email" placeholder="advisor@example.com" onkeydown="if(event.key==='Enter')doFirebaseLogin()"></div>
+        <div><label class="form-label">סיסמה</label><input type="password" id="login-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doFirebaseLogin()"></div>
+        <div id="login-err" style="color:#B5483F;font-size:13px;display:none;"></div>
+        <button class="btn btn-accent btn-lg" onclick="doFirebaseLogin()" style="justify-content:center;margin-top:4px;">כניסה</button>
+        <div style="display:flex;align-items:center;gap:10px;margin:8px 0;">
+          <div style="flex:1;height:1px;background:#2A3338;"></div>
+          <span style="font-size:12px;color:#5E6A66;">או</span>
+          <div style="flex:1;height:1px;background:#2A3338;"></div>
+        </div>
+        <button onclick="doGoogleLogin()" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:10px;border-radius:8px;border:1px solid #364044;background:#1F272B;color:#E6E4DC;font-size:14px;font-weight:600;cursor:pointer;">
+          <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+          כניסה עם Google
+        </button>
+      </div>
+      <p style="text-align:center;font-size:12px;color:#5E6A66;margin-top:14px;">
+        אין לך חשבון? <button onclick="setAuthTab('register')" style="color:#6FA88A;font-size:12px;text-decoration:underline;">הירשם כאן</button>
+      </p>
+    </div>
+
+    <!-- הרשמה -->
+    <div id="auth-form-register" class="hidden">
+      <div style="display:flex;flex-direction:column;gap:11px;">
+        <div><label class="form-label">שם מלא</label><input type="text" id="reg-name" placeholder="ישראל ישראלי" onkeydown="if(event.key==='Enter')doFirebaseRegister()"></div>
+        <div><label class="form-label">כתובת מייל</label><input type="email" id="reg-email" placeholder="advisor@example.com" onkeydown="if(event.key==='Enter')doFirebaseRegister()"></div>
+        <div><label class="form-label">סיסמה (לפחות 6 תווים)</label><input type="password" id="reg-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doFirebaseRegister()"></div>
+        <div><label class="form-label">אימות סיסמה</label><input type="password" id="reg-password2" placeholder="••••••••" onkeydown="if(event.key==='Enter')doFirebaseRegister()"></div>
+        <div id="reg-err" style="color:#B5483F;font-size:13px;display:none;"></div>
+        <button class="btn btn-accent btn-lg" onclick="doFirebaseRegister()" style="justify-content:center;margin-top:4px;">הירשם</button>
+      </div>
+      <p style="text-align:center;font-size:12px;color:#5E6A66;margin-top:14px;">
+        כבר יש לך חשבון? <button onclick="setAuthTab('login')" style="color:#6FA88A;font-size:12px;text-decoration:underline;">כניסה</button>
+      </p>
+    </div>
+
+    <!-- איפוס סיסמה -->
+    <div id="auth-form-reset" class="hidden">
+      <div style="display:flex;flex-direction:column;gap:11px;">
+        <p style="font-size:13px;color:#96A09C;line-height:1.6;margin:0;">הכנס את כתובת המייל שלך ונשלח לך קישור לאיפוס הסיסמה.</p>
+        <div><label class="form-label">כתובת מייל</label><input type="email" id="reset-email" placeholder="advisor@example.com" onkeydown="if(event.key==='Enter')doPasswordReset()"></div>
+        <div id="reset-msg" style="font-size:13px;display:none;"></div>
+        <button class="btn btn-accent btn-lg" onclick="doPasswordReset()" style="justify-content:center;margin-top:4px;">שלח קישור לאיפוס</button>
+      </div>
+      <p style="text-align:center;font-size:12px;color:#5E6A66;margin-top:14px;">
+        <button onclick="setAuthTab('login')" style="color:#6FA88A;font-size:12px;text-decoration:underline;">חזרה לכניסה</button>
+      </p>
+    </div>
+
+    <div style="margin-top:18px;padding:12px;background:#1F272B;border-radius:10px;border:1px solid #2A3338;">
+      <p style="font-size:11.5px;color:#5E6A66;margin:0;line-height:1.6;">
+        🔐 כניסה מאובטחת עם מייל וסיסמה אישית.<br>
+        מנהל המערכת: <span class="mono" style="color:#8B6FBB;">admin@yoetz.app</span>
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="page-app" class="hidden" style="min-height:100vh;">
+
+  <!-- Header -->
+  <header style="display:flex;justify-content:space-between;align-items:center;padding:11px 20px;border-bottom:1px solid #2A3338;background:#1A2024;position:sticky;top:0;z-index:50;">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <button onclick="navTo('clients')" style="display:flex;align-items:center;gap:8px;color:#E6E4DC;padding:0;">
+        <div id="logo-dot" style="width:26px;height:26px;border-radius:7px;border:2px solid #6FA88A;border-bottom-color:transparent;transform:rotate(45deg);"></div>
+        <span style="font-family:'Frank Ruhl Libre',serif;font-size:15px;font-weight:700;">ייעוץ פיננסי</span>
+      </button>
+      <span id="header-badge" class="badge badge-crit hidden"><span class="pu" style="width:5px;height:5px;border-radius:50%;background:#B5483F;display:inline-block;"></span><span id="header-badge-count"></span></span>
+    </div>
+    <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
+      <button class="nav-btn" id="nav-dashboard" onclick="navTo('dashboard')">🏠 דשבורד</button>
+      <button class="nav-btn active" id="nav-clients" onclick="navTo('clients')">📁 תיקים</button>
+      <button class="nav-btn" id="nav-market" onclick="navTo('market')">📈 מדדים</button>
+      <button class="nav-btn" id="nav-messages" onclick="navTo('messages')">💬 הודעות<span class="nav-badge hidden" id="msg-badge"></span></button>
+      <button class="nav-btn" id="nav-gemini" onclick="navTo('gemini')">✨ AI יועץ</button>
+      <button class="nav-btn" id="nav-meetings" onclick="navTo('meetings')">📅 פגישות<span class="nav-badge hidden" id="meetings-badge"></span></button>
+      <button class="nav-btn hidden" id="nav-admin" onclick="navTo('admin')">🛡️ מנהל</button>
+      <div style="width:1px;height:18px;background:#2A3338;margin:0 4px;"></div>
+      <span id="header-username" style="font-size:12.5px;color:#96A09C;"></span>
+      <span id="header-admin-badge" class="badge badge-admin hidden">מנהל</span>
+      <button class="btn btn-ghost btn-sm" onclick="doLogout()">יציאה</button>
+    </div>
+  </header>
+
+  <!-- DASHBOARD VIEW -->
+  <div id="view-dashboard" class="hidden" style="padding:20px;max-width:1060px;margin:0 auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+      <div>
+        <h2 style="font-family:'Frank Ruhl Libre',serif;font-size:20px;font-weight:700;margin:0 0 3px;" id="dash-greeting"></h2>
+        <p style="font-size:12.5px;color:#5E6A66;margin:0;" id="dash-date"></p>
+      </div>
+      <div style="display:flex;gap:7px;">
+        <div id="dash-global-search-wrap" style="position:relative;">
+          <input type="text" id="dash-search" placeholder="🔍 חיפוש לקוח..." oninput="globalSearch(this.value)" style="width:220px;padding-right:12px;">
+          <div id="dash-search-results" style="position:absolute;top:100%;right:0;width:280px;background:#1F272B;border:1px solid #2A3338;border-radius:9px;z-index:100;display:none;max-height:300px;overflow-y:auto;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- סטטיסטיקות -->
+    <div id="dash-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:20px;"></div>
+
+    <!-- שלושה עמודות -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:16px;">
+
+      <!-- פגישות היום -->
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <h4 style="font-family:'Frank Ruhl Libre',serif;font-size:14px;margin:0;">📅 פגישות היום</h4>
+          <button onclick="navTo('meetings')" style="font-size:11.5px;color:#6FA88A;cursor:pointer;">כל הפגישות →</button>
+        </div>
+        <div id="dash-meetings-today"></div>
+      </div>
+
+      <!-- התראות קריטיות -->
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <h4 style="font-family:'Frank Ruhl Libre',serif;font-size:14px;margin:0;">🔴 התראות קריטיות</h4>
+          <span id="dash-crit-count" class="badge badge-crit hidden"></span>
+        </div>
+        <div id="dash-critical-list"></div>
+      </div>
+
+      <!-- תיקים ללא מעקב -->
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <h4 style="font-family:'Frank Ruhl Libre',serif;font-size:14px;margin:0;">⏰ דורשים מעקב</h4>
+          <span style="font-size:11px;color:#5E6A66;">90+ יום ללא פגישה</span>
+        </div>
+        <div id="dash-followup-list"></div>
+      </div>
+    </div>
+
+    <!-- היסטוריית שינויים -->
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <h4 style="font-family:'Frank Ruhl Libre',serif;font-size:14px;margin:0;">📋 פעילות אחרונה</h4>
+        <select id="dash-activity-client" onchange="renderDashboard()" style="font-size:12px;max-width:160px;">
+          <option value="">כל הלקוחות</option>
+        </select>
+      </div>
+      <div id="dash-activity-list"></div>
+    </div>
+  </div>
+
+  <!-- CLIENTS VIEW -->
+  <div id="view-clients" class="layout">
+    <aside class="sidebar">
+      <div style="position:relative;margin-bottom:11px;">
+        <input type="text" id="search-input" placeholder="חיפוש לקוח..." oninput="renderSidebar()" style="padding-right:30px;">
+        <span style="position:absolute;right:9px;top:50%;transform:translateY(-50%);color:#5E6A66;">🔍</span>
+      </div>
+      <div style="display:flex;gap:5px;margin-bottom:10px;">
+        <button class="btn btn-accent btn-sm" onclick="openNewClient()" style="flex:1;justify-content:center;">+ לקוח חדש</button>
+        <button class="btn btn-sm" onclick="openScanFile()" title="סריקת קובץ">📂 סריקה</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:11px;">
+        <select id="filter-adv" onchange="renderSidebar()" style="font-size:12px;"><option value="all">כל היועצים</option></select>
+        <select id="filter-cat" onchange="renderSidebar()" style="font-size:12px;"><option value="all">כל הקטגוריות</option></select>
+      </div>
+      <div id="sidebar-count" style="font-size:11px;color:#5E6A66;margin-bottom:9px;"></div>
+      <div id="sidebar-list"></div>
+    </aside>
+    <main class="main-content" id="main-panel">
+      <div style="display:flex;align-items:center;justify-content:center;height:60vh;flex-direction:column;gap:14px;color:#5E6A66;">
+        <div style="font-size:40px;">📁</div>
+        <p style="font-size:14px;">בחר לקוח מהרשימה</p>
+        <div style="display:flex;gap:9px;">
+          <button class="btn btn-accent" onclick="openNewClient()">+ לקוח חדש</button>
+          <button class="btn" onclick="openScanFile()">📂 סריקת מסמך</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- MARKET VIEW -->
+  <div id="view-market" class="hidden" style="padding:24px;max-width:1060px;margin:0 auto;">
+    <button class="back-btn" onclick="navTo('clients')">→ חזרה</button>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+      <h3 style="font-family:'Frank Ruhl Libre',serif;font-size:17px;font-weight:700;margin:0;">מדדי שוק</h3>
+      <span class="badge badge-default">נתוני דוגמה · לא בזמן אמת</span>
+    </div>
+    <div id="market-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin-bottom:20px;"></div>
+    <div id="market-chart-placeholder" style="background:#1F272B;border:1px solid #2A3338;border-radius:11px;padding:20px;text-align:center;color:#5E6A66;font-size:14px;">
+      📊 גרפי מדדים — ת"א 125, S&P 500, דולר/שקל<br><br>
+      <div id="market-table" style="text-align:right;"></div>
+    </div>
+    <div style="margin-top:16px;background:#1F272B;border:1px solid #2A3338;border-radius:11px;padding:20px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+        <h4 style="font-family:'Frank Ruhl Libre',serif;font-size:14px;margin:0;">🏠 מדד מחירי הדירות — הלמ"ס</h4>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span id="realestate-status" class="badge badge-default">טוען…</span>
+          <button onclick="fetchRealEstateData()" style="color:#6FA88A;font-size:12px;cursor:pointer;">↻ רענון</button>
+        </div>
+      </div>
+      <div id="realestate-index" style="margin-bottom:16px;"></div>
+      <h4 style="font-family:'Frank Ruhl Libre',serif;font-size:14px;margin:0 0 12px;">מחיר מ"ר ממוצע לפי עיר — עסקאות אחרונות</h4>
+      <div id="city-table"></div>
+    </div>
+  </div>
+
+  <!-- MEETINGS VIEW -->
+  <div id="view-meetings" class="hidden" style="padding:24px;max-width:900px;margin:0 auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:36px;height:36px;border-radius:10px;background:#1F272B;border:1px solid #364044;display:flex;align-items:center;justify-content:center;font-size:18px;">📅</div>
+        <div>
+          <h3 style="font-family:'Frank Ruhl Libre',serif;font-size:17px;font-weight:700;margin:0;">ניהול פגישות</h3>
+          <p style="font-size:12px;color:#5E6A66;margin:0;">תיאום, מעקב וסיכום פגישות עם לקוחות</p>
+        </div>
+      </div>
+      <button class="btn btn-accent" onclick="openNewMeeting()">+ פגישה חדשה</button>
+    </div>
+
+    <!-- פילטרים -->
+    <div style="display:flex;gap:7px;margin-bottom:16px;flex-wrap:wrap;">
+      <button onclick="setMeetingFilter('all')" id="mf-all" class="btn btn-sm" style="background:#6FA88A;color:#0E1413;border-color:#6FA88A;">הכל</button>
+      <button onclick="setMeetingFilter('upcoming')" id="mf-upcoming" class="btn btn-sm btn-ghost">קרובות</button>
+      <button onclick="setMeetingFilter('today')" id="mf-today" class="btn btn-sm btn-ghost">היום</button>
+      <button onclick="setMeetingFilter('past')" id="mf-past" class="btn btn-sm btn-ghost">עבר</button>
+      <select id="meetings-client-filter" onchange="renderMeetings()" style="font-size:12px;max-width:160px;">
+        <option value="">כל הלקוחות</option>
+      </select>
+    </div>
+
+    <!-- רשימת פגישות -->
+    <div id="meetings-list" style="display:flex;flex-direction:column;gap:9px;"></div>
+  </div>
+
+  <!-- מודאל פגישה -->
+  <div id="modal-meeting" class="modal-overlay hidden" onclick="closeModal('modal-meeting')">
+    <div class="modal-box" style="max-width:560px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h2 id="modal-meeting-title" style="font-family:'Frank Ruhl Libre',serif;font-size:18px;font-weight:700;"></h2>
+        <button onclick="closeModal('modal-meeting')" style="color:#5E6A66;font-size:20px;">✕</button>
+      </div>
+      <div id="modal-meeting-body"></div>
+    </div>
+  </div>
+
+  <!-- GEMINI CHAT VIEW -->
+  <div id="view-gemini" class="hidden" style="padding:24px;max-width:800px;margin:0 auto;height:calc(100vh - 53px);display:flex;flex-direction:column;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+      <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#4285F4,#9B6DFF);display:flex;align-items:center;justify-content:center;font-size:18px;">✨</div>
+      <div>
+        <h3 style="font-family:'Frank Ruhl Libre',serif;font-size:17px;font-weight:700;margin:0;">AI יועץ פיננסי</h3>
+        <p style="font-size:12px;color:#5E6A66;margin:0;">מופעל על ידי Gemini · שואל על לקוחות, מדדים, תכנון פיננסי</p>
+      </div>
+      <div style="margin-right:auto;display:flex;gap:7px;align-items:center;">
+        <select id="gemini-client-ctx" style="font-size:12px;max-width:160px;" onchange="updateGeminiContext()">
+          <option value="">ללא הקשר לקוח</option>
+        </select>
+        <button onclick="clearGeminiChat()" class="btn btn-ghost btn-sm">🗑 נקה</button>
+      </div>
+    </div>
+
+    <div id="gemini-messages" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding:16px;background:#1A2024;border-radius:12px;border:1px solid #2A3338;margin-bottom:14px;">
+      <div id="gemini-welcome" style="text-align:center;padding:32px 16px;color:#5E6A66;">
+        <div style="font-size:36px;margin-bottom:12px;">✨</div>
+        <p style="font-size:14px;font-weight:600;color:#96A09C;margin:0 0 8px;">שלום! אני יועץ ה-AI שלך</p>
+        <p style="font-size:13px;margin:0 0 14px;">אני יכול לנתח לקוחות, לפרש מדדי שוק ולתת המלצות פיננסיות.</p>
+        <div style="margin-bottom:10px;text-align:right;font-size:11.5px;color:#5E6A66;padding:0 8px;">📁 שאלות על לקוח</div>
+        <div style="display:flex;flex-wrap:wrap;gap:7px;justify-content:center;margin-bottom:12px;">
+          <button onclick="sendGeminiMsg('מה המצב הפיננסי של הלקוח?')" style="background:#1F272B;border:1px solid #2A3338;color:#96A09C;padding:7px 12px;border-radius:8px;font-size:12.5px;cursor:pointer;">מה המצב הפיננסי של הלקוח?</button>
+          <button onclick="sendGeminiMsg('תן המלצות לשיפור תזרים')" style="background:#1F272B;border:1px solid #2A3338;color:#96A09C;padding:7px 12px;border-radius:8px;font-size:12.5px;cursor:pointer;">תן המלצות לשיפור תזרים</button>
+          <button onclick="sendGeminiMsg('האם הלקוח מתאים למשכנתא נוספת?')" style="background:#1F272B;border:1px solid #2A3338;color:#96A09C;padding:7px 12px;border-radius:8px;font-size:12.5px;cursor:pointer;">האם הלקוח מתאים למשכנתא נוספת?</button>
+          <button onclick="sendGeminiMsg('מה סיכון ריכוז החוב?')" style="background:#1F272B;border:1px solid #2A3338;color:#96A09C;padding:7px 12px;border-radius:8px;font-size:12.5px;cursor:pointer;">מה סיכון ריכוז החוב?</button>
+        </div>
+        <div style="margin-bottom:10px;text-align:right;font-size:11.5px;color:#5E6A66;padding:0 8px;">📈 שאלות על מדדי שוק</div>
+        <div style="display:flex;flex-wrap:wrap;gap:7px;justify-content:center;margin-bottom:12px;">
+          <button onclick="sendGeminiMsgWithMarket('פרש לי את מדדי השוק הנוכחיים')" style="background:#1A2024;border:1px solid #4C7863;color:#6FA88A;padding:7px 12px;border-radius:8px;font-size:12.5px;cursor:pointer;">📈 פרש לי את מדדי השוק הנוכחיים</button>
+          <button onclick="sendGeminiMsgWithMarket('מה משמעות עליית הדולר ללקוחות שלי?')" style="background:#1A2024;border:1px solid #4C7863;color:#6FA88A;padding:7px 12px;border-radius:8px;font-size:12.5px;cursor:pointer;">📈 מה משמעות עליית הדולר ללקוחות?</button>
+          <button onclick="sendGeminiMsgWithMarket('האם עכשיו זמן טוב לקנות נדלן?')" style="background:#1A2024;border:1px solid #4C7863;color:#6FA88A;padding:7px 12px;border-radius:8px;font-size:12.5px;cursor:pointer;">📈 האם עכשיו זמן טוב לקנות נדל"ן?</button>
+          <button onclick="sendGeminiMsgWithMarket('כיצד מדד תא 125 משפיע על תיקי ההשקעה?')" style="background:#1A2024;border:1px solid #4C7863;color:#6FA88A;padding:7px 12px;border-radius:8px;font-size:12.5px;cursor:pointer;">📈 כיצד ת"א 125 משפיע על תיקי השקעה?</button>
+        </div>
+        <div style="margin-bottom:10px;text-align:right;font-size:11.5px;color:#5E6A66;padding:0 8px;">💡 שאלות כלליות</div>
+        <div style="display:flex;flex-wrap:wrap;gap:7px;justify-content:center;">
+          <button onclick="sendGeminiMsg('מה ההבדל בין DSTI לDTI?')" style="background:#1F272B;border:1px solid #2A3338;color:#96A09C;padding:7px 12px;border-radius:8px;font-size:12.5px;cursor:pointer;">מה ההבדל בין DSTI ל-DTI?</button>
+          <button onclick="sendGeminiMsg('איך לתכנן פרישה בגיל 60?')" style="background:#1F272B;border:1px solid #2A3338;color:#96A09C;padding:7px 12px;border-radius:8px;font-size:12.5px;cursor:pointer;">איך לתכנן פרישה בגיל 60?</button>
+          <button onclick="sendGeminiMsg('מה עדיף לסגור חוב או לחסוך?')" style="background:#1F272B;border:1px solid #2A3338;color:#96A09C;padding:7px 12px;border-radius:8px;font-size:12.5px;cursor:pointer;">מה עדיף — לסגור חוב או לחסוך?</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:9px;">
+      <input type="text" id="gemini-input" placeholder="שאל שאלה פיננסית..." style="flex:1;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendGeminiMsg();}">
+      <button class="btn btn-accent" onclick="sendGeminiMsg()" id="gemini-send-btn">שלח ✨</button>
+    </div>
+  </div>
+  <div id="view-messages" class="hidden" style="padding:24px;max-width:800px;margin:0 auto;">
+    <button class="back-btn" onclick="navTo('clients')">→ חזרה</button>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+      <h3 style="font-family:'Frank Ruhl Libre',serif;font-size:17px;font-weight:700;margin:0;">הודעות פנימיות</h3>
+      <span id="msg-count-badge" class="badge badge-accent hidden"></span>
+    </div>
+    <div id="messages-list" style="overflow-y:auto;display:flex;flex-direction:column;gap:9px;margin-bottom:14px;max-height:360px;border:1px solid #2A3338;border-radius:10px;padding:13px;">
+      <div style="color:#5E6A66;font-size:13px;text-align:center;padding:20px;">אין הודעות עדיין</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:7px;">
+      <div style="display:flex;gap:7px;">
+        <select id="msg-client-select" style="flex:1;font-size:13px;"><option value="">שיוך לתיק (אופציונלי)</option></select>
+        <label style="display:flex;align-items:center;gap:5px;font-size:13px;color:#96A09C;white-space:nowrap;cursor:pointer;"><input type="checkbox" id="msg-toall" style="width:auto;">לכולם</label>
+      </div>
+      <div style="display:flex;gap:7px;">
+        <input type="text" id="msg-input" placeholder="כתוב הודעה..." style="flex:1;" onkeydown="if(event.key==='Enter')sendMessage()">
+        <button class="btn btn-accent" onclick="sendMessage()">שלח ✈</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN VIEW -->
+  <div id="view-admin" class="hidden" style="padding:24px;max-width:1060px;margin:0 auto;">
+    <button class="back-btn" onclick="navTo('clients')">→ חזרה</button>
+    <div style="display:flex;align-items:center;gap:9px;margin-bottom:18px;">
+      <span style="font-size:20px;">🛡️</span>
+      <h2 style="font-family:'Frank Ruhl Libre',serif;font-size:19px;font-weight:700;margin:0;">לוח מנהל</h2>
+      <span class="badge badge-admin">גישה מלאה</span>
+    </div>
+    <div style="display:flex;gap:5px;margin-bottom:18px;flex-wrap:wrap;">
+      <button class="btn btn-sm" id="atab-overview" onclick="adminTab('overview')" style="background:#8B6FBB;color:#fff;border-color:#5E4A80;">📊 סקירה</button>
+      <button class="btn btn-sm" id="atab-advisors" onclick="adminTab('advisors')">👥 יועצים</button>
+      <button class="btn btn-sm" id="atab-categories" onclick="adminTab('categories')">📁 קטגוריות</button>
+      <button class="btn btn-sm" id="atab-all" onclick="adminTab('all')">👁 כל התיקים</button>
+    </div>
+    <div id="admin-content"></div>
+  </div>
+
+</div><!-- end page-app -->
+</div><!-- end app -->
+
+<!-- MODALS -->
+<div id="modal-client" class="modal-overlay hidden" onclick="closeModal('modal-client')">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h2 id="modal-client-title" style="font-family:'Frank Ruhl Libre',serif;font-size:18px;font-weight:700;"></h2>
+      <button onclick="closeModal('modal-client')" style="color:#5E6A66;font-size:20px;">✕</button>
+    </div>
+    <div class="modal-body" id="modal-client-body"></div>
+  </div>
+</div>
+
+<div id="modal-scan" class="modal-overlay hidden" onclick="closeModal('modal-scan')">
+  <div class="modal-box" style="max-width:600px;" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h2 style="font-family:'Frank Ruhl Libre',serif;font-size:18px;font-weight:700;">סריקת מסמך פיננסי</h2>
+      <button onclick="closeModal('modal-scan')" style="color:#5E6A66;font-size:20px;">✕</button>
+    </div>
+    <div id="modal-scan-body"></div>
+  </div>
+</div>
+
+<div id="modal-delete" class="modal-overlay hidden" onclick="closeModal('modal-delete')">
+  <div class="modal-box" style="max-width:380px;" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h2 style="font-family:'Frank Ruhl Libre',serif;font-size:18px;font-weight:700;">הסרת לקוח</h2>
+      <button onclick="closeModal('modal-delete')" style="color:#5E6A66;font-size:20px;">✕</button>
+    </div>
+    <p id="delete-text" style="font-size:13.5px;color:#96A09C;margin-bottom:18px;line-height:1.6;"></p>
+    <div style="display:flex;gap:9px;">
+      <button class="btn btn-crit" id="delete-confirm-btn">הסרה לצמיתות</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-delete')">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════
+// Firebase Config
+// ═══════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyCN48NVbW3gfvUDx8nN0tnmBMH13QBaT8",
+  authDomain: "yoetz-pini.firebaseapp.com",
+  projectId: "yoetz-pini",
+  storageBucket: "yoetz-pini.firebasestorage.app",
+  messagingSenderId: "202224385871",
+  appId: "1:202224385871:web:7f886ed471cce0d3ab8f3a"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// ═══════════════════════════════════
+// Constants
+// ═══════════════════════════════════
+const ADMIN_EMAIL = 'admin@yoetz.app';
+const CITY_PRICES = {"תל אביב":58000,"ירושלים":46000,"חיפה":29000,"נתניה":38000,"ראשון לציון":41000,"פתח תקווה":37000,"באר שבע":22000,"אשדוד":31000,"רחובות":35000,"הרצליה":52000};
+const CITIES = Object.keys(CITY_PRICES);
+
+// ═══════════════════════════════════
+// State
+// ═══════════════════════════════════
+let currentUser = null;
+let clients = [], messages = [], advisors = [], categories = [];
+let selectedClientId = null;
+let currentView = 'clients';
+let adminCurrentTab = 'overview';
+let unsubClients = null, unsubMessages = null, unsubAdvisors = null, unsubCategories = null;
+
+// ═══════════════════════════════════
+// Init
+// ═══════════════════════════════════
+window.onload = async () => {
+  // בדוק session שמור
+  const saved = localStorage.getItem('yoetz-user');
+  if (saved) {
+    try {
+      currentUser = JSON.parse(saved);
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('app').classList.remove('hidden');
+      startApp();
+      return;
+    } catch(e) {}
+  }
+  document.getElementById('loading').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  showLoginPage();
+};
+
+function showLoginPage() {
+  document.getElementById('page-login').style.display = 'flex';
+  document.getElementById('page-app').classList.add('hidden');
+}
+
+// hash פשוט לסיסמה
+async function hashPass(pass) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pass));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+// ═══════════════════════════════════
+// Auth UI
+// ═══════════════════════════════════
+function setAuthTab(tab) {
+  ['login','register','reset'].forEach(t => {
+    const btn = document.getElementById('auth-tab-' + t);
+    const form = document.getElementById('auth-form-' + t);
+    if (!btn || !form) return;
+    const active = t === tab;
+    btn.style.background = active ? '#1A2024' : 'transparent';
+    btn.style.color = active ? '#E6E4DC' : '#96A09C';
+    btn.style.border = active ? '1px solid #2A3338' : 'none';
+    form.classList.toggle('hidden', !active);
+  });
+}
+
+function showAuthErr(id, msg) {
+  const el = document.getElementById(id);
+  if (el) { el.textContent = msg; el.style.display = 'block'; }
+}
+
+async function doGoogleLogin() {
+  showAuthErr('login-err', 'כניסה עם Google דורשת הגדרה נוספת — השתמש במייל וסיסמה');
+}
+
+async function doFirebaseLogin() {
+  const email = document.getElementById('login-email').value.trim().toLowerCase();
+  const pass = document.getElementById('login-password').value;
+  if (!email) { showAuthErr('login-err','נא להזין כתובת מייל'); return; }
+  if (!pass) { showAuthErr('login-err','נא להזין סיסמה'); return; }
+  try {
+    const hash = await hashPass(pass);
+    const snap = await db.collection('userProfiles')
+      .where('email','==',email)
+      .where('passHash','==',hash)
+      .limit(1).get();
+    if (snap.empty) {
+      showAuthErr('login-err','מייל או סיסמה שגויים');
+      return;
+    }
+    const profile = snap.docs[0].data();
+    currentUser = {
+      uid: snap.docs[0].id,
+      email: profile.email,
+      name: profile.name,
+      role: profile.email === ADMIN_EMAIL ? 'admin' : (profile.role || 'advisor'),
+    };
+    localStorage.setItem('yoetz-user', JSON.stringify(currentUser));
+    document.getElementById('page-login').style.display = 'none';
+    startApp();
+  } catch(e) {
+    showAuthErr('login-err', 'שגיאה: ' + e.message);
+  }
+}
+
+async function doFirebaseRegister() {
+  const name = document.getElementById('reg-name').value.trim();
+  const email = document.getElementById('reg-email').value.trim().toLowerCase();
+  const pass = document.getElementById('reg-password').value;
+  const pass2 = document.getElementById('reg-password2').value;
+  if (!name) { showAuthErr('reg-err','נא להזין שם מלא'); return; }
+  if (!email) { showAuthErr('reg-err','נא להזין כתובת מייל'); return; }
+  if (pass.length < 6) { showAuthErr('reg-err','הסיסמה חייבת להכיל לפחות 6 תווים'); return; }
+  if (pass !== pass2) { showAuthErr('reg-err','הסיסמאות אינן תואמות'); return; }
+  try {
+    // בדוק אם המייל כבר קיים
+    const exists = await db.collection('userProfiles').where('email','==',email).limit(1).get();
+    if (!exists.empty) { showAuthErr('reg-err','כתובת המייל כבר רשומה — נסה להתחבר'); return; }
+    const hash = await hashPass(pass);
+    const ref = await db.collection('userProfiles').add({
+      name, email, passHash: hash, role: 'advisor', createdAt: Date.now(),
+    });
+    await db.collection('advisors').add({ name, email, uid: ref.id });
+    currentUser = { uid: ref.id, email, name, role: 'advisor' };
+    localStorage.setItem('yoetz-user', JSON.stringify(currentUser));
+    document.getElementById('page-login').style.display = 'none';
+    startApp();
+  } catch(e) {
+    showAuthErr('reg-err', 'שגיאה: ' + e.message);
+  }
+}
+
+async function doPasswordReset() {
+  const email = document.getElementById('reset-email').value.trim().toLowerCase();
+  const msgEl = document.getElementById('reset-msg');
+  if (!email) { msgEl.textContent='נא להזין כתובת מייל'; msgEl.style.color='#B5483F'; msgEl.style.display='block'; return; }
+  const snap = await db.collection('userProfiles').where('email','==',email).limit(1).get();
+  if (snap.empty) {
+    msgEl.textContent='לא נמצא חשבון עם מייל זה'; msgEl.style.color='#B5483F'; msgEl.style.display='block';
+    return;
+  }
+  // יצירת קוד איפוס זמני
+  const resetCode = Math.random().toString(36).slice(2,8).toUpperCase();
+  await db.collection('passwordResets').add({ email, code: resetCode, createdAt: Date.now() });
+  msgEl.textContent = '✅ קוד איפוס: ' + resetCode + ' — שמור אותו ופנה למנהל המערכת לאישור.';
+  msgEl.style.color = '#6FA88A'; msgEl.style.display = 'block';
+}
+
+function doLogout() {
+  if (unsubClients) unsubClients();
+  if (unsubMessages) unsubMessages();
+  if (unsubAdvisors) unsubAdvisors();
+  if (unsubCategories) unsubCategories();
+  if (unsubMeetings) unsubMeetings();
+  currentUser = null;
+  localStorage.removeItem('yoetz-user');
+  location.reload();
+}
+
+// ═══════════════════════════════════
+// פונקציות עזר
+// ═══════════════════════════════════
+function uid() { return Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-4); }
+function fmt(n) { if (n == null || isNaN(n)) return "—"; return new Intl.NumberFormat("he-IL",{maximumFractionDigits:0}).format(Math.round(n)); }
+function fmtPct(n) { if (n == null || isNaN(n)) return "—"; return new Intl.NumberFormat("he-IL",{maximumFractionDigits:1}).format(n)+"%"; }
+function fmtDate(t) { return new Date(t).toLocaleDateString("he-IL",{day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"}); }
+function monthsBack(n) {
+  const arr=[], d=new Date();
+  for(let i=n-1;i>=0;i--){const m=new Date(d.getFullYear(),d.getMonth()-i,1);arr.push({key:`${m.getFullYear()}-${String(m.getMonth()+1).padStart(2,"0")}`,label:m.toLocaleDateString("he-IL",{month:"short",year:"2-digit"})});}
+  return arr;
+}
+
+// ═══════════════════════════════════
+// App Start
+// ═══════════════════════════════════
+async function startApp() {
+  document.getElementById('loading').classList.remove('hidden');
+  document.getElementById('page-login').style.display = 'none';
+
+  // Update header
+  document.getElementById('header-username').textContent = currentUser.name;
+  if (currentUser.role === 'admin') {
+    document.getElementById('header-admin-badge').classList.remove('hidden');
+    document.getElementById('nav-admin').classList.remove('hidden');
+    document.getElementById('logo-dot').style.borderColor = '#8B6FBB';
+  }
+
+  // Subscribe to Firestore
+  unsubAdvisors = db.collection('advisors').onSnapshot(snap => {
+    advisors = snap.docs.map(d => ({id:d.id,...d.data()}));
+    if (advisors.length === 0) seedAdvisors();
+    renderSidebar();
+    renderFilters();
+  });
+
+  unsubCategories = db.collection('categories').onSnapshot(snap => {
+    categories = snap.docs.map(d => ({id:d.id,...d.data()}));
+    if (categories.length === 0) seedCategories();
+    renderSidebar();
+    renderFilters();
+  });
+
+  unsubClients = db.collection('clients').onSnapshot(snap => {
+    clients = snap.docs.map(d => ({id:d.id,...d.data()}));
+    if (clients.length === 0) seedClients();
+    renderSidebar();
+    updateHeaderBadge();
+    if (selectedClientId) showClient(selectedClientId);
+  });
+
+  unsubMessages = db.collection('messages').orderBy('ts','asc').onSnapshot(snap => {
+    messages = snap.docs.map(d => ({id:d.id,...d.data()}));
+    renderMessages();
+    updateMsgBadge();
+  });
+
+  unsubMeetings = db.collection('meetings').orderBy('dateTime','asc').onSnapshot(snap => {
+    meetings = snap.docs.map(d => ({id:d.id,...d.data()}));
+    if (currentView === 'meetings') renderMeetings();
+    updateMeetingsBadge();
+  });
+
+  await new Promise(r => setTimeout(r, 1200));
+  document.getElementById('loading').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('page-app').classList.remove('hidden');
+  navTo('dashboard');
+  renderMarket();
+  setTimeout(checkNotifications, 3000);
+}
+
+// ═══════════════════════════════════
+// Seed Data
+// ═══════════════════════════════════
+async function seedAdvisors() {
+  const data = [{name:"רונית אברהם"},{name:"דוד שפירא"},{name:"מיכל גולן"}];
+  for (const a of data) await db.collection('advisors').add(a);
+}
+async function seedCategories() {
+  const data = [{name:"פרטיים",color:"#6FA88A"},{name:"עסקיים",color:"#C9A24A"},{name:"השקעות",color:"#8B6FBB"},{name:"פנסיה",color:"#5B8FA8"}];
+  for (const c of data) await db.collection('categories').add(c);
+}
+async function seedClients() {
+  const m1=monthsBack(6).map((m,i)=>({...m,income:18000+(i%2?200:0),expense:14000+i*600}));
+  const m2=monthsBack(6).map((m,i)=>({...m,income:11000,expense:11400+i*50}));
+  const adv1=advisors[0]?.id||'', adv2=advisors[1]?.id||'', cat1=categories[0]?.id||'', cat2=categories[1]?.id||'';
+  await db.collection('clients').add({name:"דניאל כהן",age:41,phone:"050-1234567",notes:"עצמאי",advisorId:adv1,categoryId:cat1,city:"תל אביב",monthly:m1,debts:[{id:uid(),name:"הלוואת רכב",balance:48000,monthlyPayment:1900,interestRate:6.2},{id:uid(),name:"כ.אשראי",balance:12000,monthlyPayment:800,interestRate:14}],savings:[{id:uid(),type:"פיקדון",amount:15000}],assets:[{id:uid(),name:"דירת מגורים",type:"נדל\"ן",value:1450000}],createdAt:Date.now()});
+  await db.collection('clients').add({name:"מיכל לוי",age:34,phone:"052-7654321",notes:"שכירה",advisorId:adv1,categoryId:cat1,city:"ירושלים",monthly:m2,debts:[{id:uid(),name:"הלוואה",balance:22000,monthlyPayment:1100,interestRate:9.5}],savings:[{id:uid(),type:"עו\"ש",amount:3200}],assets:[],createdAt:Date.now()});
+}
+
+// ═══════════════════════════════════
+// Navigation
+// ═══════════════════════════════════
+function navTo(view) {
+  currentView = view;
+  ['dashboard','clients','market','messages','gemini','meetings','admin'].forEach(v => {
+    const el = document.getElementById('view-'+v);
+    if (el) el.classList.toggle('hidden', v !== view);
+    const nb = document.getElementById('nav-'+v);
+    if (nb) nb.classList.toggle('active', v === view);
+  });
+  if (view === 'dashboard') renderDashboard();
+  if (view === 'clients') renderSidebar();
+  if (view === 'market') { renderMarket(); fetchRealEstateData(); }
+  if (view === 'messages') { renderMessages(); updateMsgClientSelect(); }
+  if (view === 'gemini') { updateGeminiClientSelect(); }
+  if (view === 'meetings') { renderMeetings(); updateMeetingsClientSelect(); }
+  if (view === 'admin') renderAdmin();
+}
+
+// ═══════════════════════════════════
+// Analysis
+// ═══════════════════════════════════
+function analyzeClient(client) {
+  const iss=[], m=client.monthly||[], last=m[m.length-1];
+  if (!last) return iss;
+  const inc=last.income||0, exp=last.expense||0, net=inc-exp;
+  const dT=(client.debts||[]).reduce((s,d)=>s+(d.balance||0),0);
+  const dM=(client.debts||[]).reduce((s,d)=>s+(d.monthlyPayment||0),0);
+  const sT=(client.savings||[]).reduce((s,x)=>s+(x.amount||0),0);
+  const aT=(client.assets||[]).reduce((s,a)=>s+(a.value||0),0);
+  if(net<0)iss.push({severity:"critical",category:"תזרים",title:"תזרים שלילי",detail:"גירעון חודשי של ₪"+fmt(Math.abs(net))});
+  else if(inc>0&&net/inc<.05)iss.push({severity:"warn",category:"תזרים",title:"מרווח תזרימי דק",detail:"רק "+fmtPct((net/inc)*100)+" עודף"});
+  if(m.length>=3){const l=m.slice(-3);if(l[0].expense<l[1].expense&&l[1].expense<l[2].expense)iss.push({severity:"warn",category:"תזרים",title:"הוצאות עולות",detail:"גידול רצוף 3 חודשים"});}
+  if(inc>0){const d=(dM/inc)*100;if(d>40)iss.push({severity:"critical",category:"חוב",title:"DSTI גבוה מאוד",detail:fmtPct(d)+" מהכנסה להחזרי חוב"});else if(d>30)iss.push({severity:"warn",category:"חוב",title:"DSTI גבוה",detail:fmtPct(d)+" מהכנסה להחזרי חוב"});}
+  const ed=(client.debts||[]).filter(d=>(d.interestRate||0)>8);
+  if(ed.length>0&&sT>0)iss.push({severity:"warn",category:"חוב",title:"חוב יקר לצד חיסכון",detail:"₪"+fmt(ed.reduce((s,d)=>s+d.balance,0))+" בריבית >8%"});
+  if(exp>0){const mc=sT/exp;if(mc<1)iss.push({severity:"critical",category:"חיסכון",title:"אין כרית ביטחון",detail:mc.toFixed(1)+" חודשים מכוסים"});else if(mc<3)iss.push({severity:"warn",category:"חיסכון",title:"כרית ביטחון דקה",detail:mc.toFixed(1)+" חודשים"});}
+  if(inc>0&&net/inc<.10&&net>=0)iss.push({severity:"info",category:"חיסכון",title:"קצב חיסכון נמוך",detail:fmtPct((net/inc)*100)+" (מומלץ 15-20%)"});
+  if(aT>0&&dT>aT)iss.push({severity:"critical",category:"חוב",title:"הון עצמי שלילי",detail:"חובות עולים על נכסים"});
+  if(!(client.savings||[]).some(s=>["פנסיה","קרן השתלמות","גמל"].includes(s.type))&&(client.age||0)>0)iss.push({severity:"info",category:"חיסכון",title:"אין חיסכון פנסיוני",detail:"לא זוהו רכיבי פנסיה"});
+  return iss;
+}
+
+function healthBarHtml(client, h=6) {
+  const last=(client.monthly||[]).slice(-1)[0];
+  if(!last) return `<div style="height:${h}px;background:#2A3338;border-radius:3px;"></div>`;
+  const inc=last.income||1, ep=Math.min(100,(last.expense/inc)*100);
+  const dp=Math.min(100-ep,((client.debts||[]).reduce((s,d)=>s+(d.monthlyPayment||0),0)/inc)*100);
+  const rp=Math.max(0,100-ep-dp);
+  return `<div class="health-bar"><div style="width:${ep}%;background:#C97B4A;"></div><div style="width:${dp}%;background:#B5483F;"></div><div style="width:${rp}%;background:#6FA88A;"></div></div>`;
+}
+
+function sevIcon(s) {
+  if(s==="critical") return '🔴';
+  if(s==="warn") return '🟡';
+  return '🟢';
+}
+
+// ═══════════════════════════════════
+// Sidebar
+// ═══════════════════════════════════
+function renderFilters() {
+  const fa = document.getElementById('filter-adv');
+  const fc = document.getElementById('filter-cat');
+  if (!fa || !fc) return;
+  const faVal = fa.value, fcVal = fc.value;
+  fa.innerHTML = '<option value="all">כל היועצים</option>' + advisors.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
+  fc.innerHTML = '<option value="all">כל הקטגוריות</option>' + categories.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  fa.value = faVal; fc.value = fcVal;
+}
+
+function getFilteredClients() {
+  const s = (document.getElementById('search-input')?.value||'').toLowerCase();
+  const fa = document.getElementById('filter-adv')?.value||'all';
+  const fc = document.getElementById('filter-cat')?.value||'all';
+  let list = clients;
+
+  // כולם — כולל מנהל — רואים רק תיקים שלהם + תיקים משותפים
+  const myAdvId = advisors.find(a =>
+    a.uid === currentUser?.uid ||
+    a.email === currentUser?.email ||
+    a.name === currentUser?.name
+  )?.id;
+  list = list.filter(c => c.advisorId === myAdvId || c.isShared === true);
+
+  if (fa !== 'all') list = list.filter(c => c.advisorId === fa);
+  if (fc !== 'all') list = list.filter(c => c.categoryId === fc);
+  if (s) list = list.filter(c => (c.name||'').toLowerCase().includes(s));
+  return [...list].sort((a,b) => analyzeClient(b).filter(i=>i.severity==="critical").length - analyzeClient(a).filter(i=>i.severity==="critical").length);
+}
+
+function renderSidebar() {
+  const list = document.getElementById('sidebar-list');
+  const count = document.getElementById('sidebar-count');
+  if (!list) return;
+  const filtered = getFilteredClients();
+  count.textContent = filtered.length + ' לקוחות';
+
+  // Group by advisor
+  let html = '';
+  advisors.forEach(adv => {
+    const ac = filtered.filter(c => c.advisorId === adv.id);
+    if (!ac.length) return;
+    const cr = ac.reduce((s,c)=>s+analyzeClient(c).filter(i=>i.severity==="critical").length,0);
+    html += `<div style="margin-bottom:5px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 9px;border-radius:7px;background:#1F272B;border:1px solid #2A3338;margin-bottom:3px;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="font-size:12.5px;font-weight:600;">${adv.name}</span>
+          <span class="mono" style="font-size:11px;color:#96A09C;">${ac.length}</span>
+        </div>
+        ${cr>0?`<span class="badge badge-crit"><span class="pu" style="width:4px;height:4px;border-radius:50%;background:#B5483F;display:inline-block;"></span>${cr}</span>`:''}
+      </div>`;
+    ac.forEach(c => {
+      const iss = analyzeClient(c);
+      const cr2 = iss.filter(i=>i.severity==="critical").length;
+      const wn = iss.filter(i=>i.severity==="warn").length;
+      const cat = categories.find(x=>x.id===c.categoryId);
+      html += `<button class="folder-item${c.id===selectedClientId?' active':''}" onclick="selectClient('${c.id}')" style="margin-right:14px;width:calc(100% - 14px);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <div style="display:flex;align-items:center;gap:5px;">
+            ${cat?`<div style="width:5px;height:5px;border-radius:50%;background:${cat.color};"></div>`:''}
+            <span style="font-size:13px;font-weight:500;">${c.name}</span>
+            ${c.isShared?`<span style="font-size:9px;color:#6FA88A;">🔓</span>`:`<span style="font-size:9px;color:#5E6A66;">🔒</span>`}
+          </div>
+          ${cr2>0?`<span style="display:flex;align-items:center;gap:2px;"><span class="pu" style="width:4px;height:4px;border-radius:50%;background:#B5483F;display:inline-block;"></span><span class="mono" style="font-size:10.5px;color:#B5483F;">${cr2}</span></span>`:wn>0?`<span class="mono" style="font-size:10.5px;color:#C97B4A;">${wn}</span>`:'✅'}
+        </div>
+        ${healthBarHtml(c,4)}
+      </button>`;
+    });
+    html += '</div>';
+  });
+
+  const unassigned = filtered.filter(c => !advisors.find(a=>a.id===c.advisorId));
+  if (unassigned.length) {
+    html += `<div style="font-size:11.5px;color:#5E6A66;padding:6px 10px;">ללא שיוך</div>`;
+    unassigned.forEach(c => {
+      html += `<button class="folder-item${c.id===selectedClientId?' active':''}" onclick="selectClient('${c.id}')">
+        <span style="font-size:13px;font-weight:500;">${c.name}</span>
+        ${healthBarHtml(c,4)}
+      </button>`;
+    });
+  }
+
+  if (!filtered.length) html = `<div style="color:#5E6A66;font-size:13px;text-align:center;padding:24px;">אין לקוחות</div>`;
+  list.innerHTML = html;
+}
+
+function updateHeaderBadge() {
+  const tot = clients.reduce((s,c)=>s+analyzeClient(c).filter(i=>i.severity==="critical").length,0);
+  const b = document.getElementById('header-badge');
+  const bc = document.getElementById('header-badge-count');
+  if (tot > 0) { b.classList.remove('hidden'); bc.textContent = tot + ' התראות'; }
+  else b.classList.add('hidden');
+}
+
+// ═══════════════════════════════════
+// Client Detail
+// ═══════════════════════════════════
+function selectClient(id) {
+  selectedClientId = id;
+  renderSidebar();
+  showClient(id);
+}
+
+function showClient(id) {
+  const client = clients.find(c=>c.id===id);
+  if (!client) return;
+  const iss = analyzeClient(client);
+  const last = (client.monthly||[]).slice(-1)[0]||{};
+  const dT=(client.debts||[]).reduce((s,d)=>s+(d.balance||0),0);
+  const sT=(client.savings||[]).reduce((s,x)=>s+(x.amount||0),0);
+  const aT=(client.assets||[]).reduce((s,a)=>s+(a.value||0),0);
+  const nw=aT+sT-dT;
+  const adv=advisors.find(a=>a.id===client.advisorId);
+  const cat=categories.find(c=>c.id===client.categoryId);
+  const canEdit=currentUser.role==='admin'||advisors.find(a=>a.name===currentUser.name)?.id===client.advisorId;
+  const cityPrice=CITY_PRICES[client.city];
+  const sortedIss=[...iss].sort((a,b)=>({critical:0,warn:1,info:2}[a.severity]-{critical:0,warn:1,info:2}[b.severity]));
+
+  let issHtml = '';
+  if (iss.length===0) {
+    issHtml = `<div style="display:flex;align-items:center;gap:9px;padding:14px;background:rgba(111,168,138,.07);border:1px solid #4C7863;border-radius:9px;"><span>✅</span><span style="font-size:13.5px;">לא זוהו בעיות מהותיות.</span></div>`;
+  } else {
+    sortedIss.forEach(is => {
+      const cls = is.severity==='critical'?'issue-crit':is.severity==='warn'?'issue-warn':'issue-info';
+      issHtml += `<div class="issue-card ${cls}">
+        <div style="flex-shrink:0;margin-top:1px;">${sevIcon(is.severity)}</div>
+        <div>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;flex-wrap:wrap;">
+            <span style="font-weight:600;font-size:13.5px;">${is.title}</span>
+            <span class="badge badge-default">${is.category}</span>
+          </div>
+          <p style="margin:0;font-size:13px;color:#96A09C;line-height:1.55;">${is.detail}</p>
+        </div>
+      </div>`;
+    });
+  }
+
+  // Monthly table
+  const months = (client.monthly||[]).slice(-6);
+  let monthHtml = `<table style="width:100%;border-collapse:collapse;font-size:13px;">
+    <tr style="color:#5E6A66;"><td style="padding:4px 8px;">חודש</td><td style="padding:4px 8px;">הכנסה</td><td style="padding:4px 8px;">הוצאה</td><td style="padding:4px 8px;">עודף</td></tr>`;
+  months.forEach(m => {
+    const net=m.income-m.expense;
+    monthHtml += `<tr style="border-top:1px solid #2A3338;">
+      <td style="padding:5px 8px;color:#96A09C;">${m.label}</td>
+      <td style="padding:5px 8px;color:#6FA88A;" class="mono">₪${fmt(m.income)}</td>
+      <td style="padding:5px 8px;color:#C97B4A;" class="mono">₪${fmt(m.expense)}</td>
+      <td style="padding:5px 8px;color:${net>=0?'#6FA88A':'#B5483F'};" class="mono">₪${fmt(net)}</td>
+    </tr>`;
+  });
+  monthHtml += '</table>';
+
+  // ── תחזית כלכלית ──
+  const forecastData = calcForecast(client);
+  const f1 = forecastData.year1;
+  const f5 = forecastData.year5;
+
+  const forecastHtml = `
+  <div class="card" style="margin-bottom:14px;">
+    <h4 style="font-family:'Frank Ruhl Libre',serif;font-size:14px;margin:0 0 4px;display:flex;align-items:center;gap:8px;">
+      📈 תחזית כלכלית
+      <span class="badge badge-default" style="font-size:10px;">מבוסס על נתונים נוכחיים</span>
+    </h4>
+    <p style="font-size:11.5px;color:#5E6A66;margin:0 0 14px;">הנחות: הכנסה/הוצאה יציבות, ריבית שנתית 3.5% על חיסכון, הורדת חוב לפי תשלומים חודשיים</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+      <div style="background:#1A2024;border-radius:10px;padding:14px;border:1px solid #2A3338;">
+        <div style="font-size:12px;color:#96A09C;margin-bottom:10px;font-weight:600;">עוד שנה אחת</div>
+        <div style="display:flex;flex-direction:column;gap:7px;">
+          <div style="display:flex;justify-content:space-between;font-size:13px;">
+            <span style="color:#5E6A66;">חיסכון צפוי</span>
+            <span class="mono" style="color:#6FA88A;">₪${fmt(f1.savings)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;">
+            <span style="color:#5E6A66;">יתרת חובות</span>
+            <span class="mono" style="color:#B5483F;">₪${fmt(f1.debt)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;">
+            <span style="color:#5E6A66;">הון נטו צפוי</span>
+            <span class="mono" style="color:${f1.netWorth>=0?'#6FA88A':'#B5483F'};">₪${fmt(f1.netWorth)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;">
+            <span style="color:#5E6A66;">חיסכון מצטבר</span>
+            <span class="mono" style="color:#C9A24A;">₪${fmt(f1.accumulated)}</span>
+          </div>
+        </div>
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid #2A3338;">
+          <div style="font-size:11.5px;color:${f1.trend==='positive'?'#6FA88A':f1.trend==='negative'?'#B5483F':'#C97B4A'};">
+            ${f1.trend==='positive'?'✅ מגמה חיובית':f1.trend==='negative'?'⚠️ מגמה שלילית':'➡️ מגמה יציבה'}
+          </div>
+        </div>
+      </div>
+
+      <div style="background:#1A2024;border-radius:10px;padding:14px;border:1px solid #2A3338;">
+        <div style="font-size:12px;color:#96A09C;margin-bottom:10px;font-weight:600;">עוד 5 שנים</div>
+        <div style="display:flex;flex-direction:column;gap:7px;">
+          <div style="display:flex;justify-content:space-between;font-size:13px;">
+            <span style="color:#5E6A66;">חיסכון צפוי</span>
+            <span class="mono" style="color:#6FA88A;">₪${fmt(f5.savings)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;">
+            <span style="color:#5E6A66;">יתרת חובות</span>
+            <span class="mono" style="color:#B5483F;">₪${fmt(f5.debt)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;">
+            <span style="color:#5E6A66;">הון נטו צפוי</span>
+            <span class="mono" style="color:${f5.netWorth>=0?'#6FA88A':'#B5483F'};">₪${fmt(f5.netWorth)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;">
+            <span style="color:#5E6A66;">חיסכון מצטבר</span>
+            <span class="mono" style="color:#C9A24A;">₪${fmt(f5.accumulated)}</span>
+          </div>
+        </div>
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid #2A3338;">
+          <div style="font-size:11.5px;color:${f5.trend==='positive'?'#6FA88A':f5.trend==='negative'?'#B5483F':'#C97B4A'};">
+            ${f5.debtFree?'🎉 חובות ישולמו במלואם':''}
+            ${f5.trend==='positive'?'✅ מגמה חיובית':f5.trend==='negative'?'⚠️ מגמה שלילית':'➡️ מגמה יציבה'}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:14px;padding:10px 14px;background:rgba(111,168,138,.06);border:1px solid #2A3338;border-radius:8px;">
+      <p style="font-size:12px;color:#96A09C;margin:0;line-height:1.7;">
+        💡 <strong>המלצה:</strong>
+        ${forecastHint(client, f1, f5)}
+      </p>
+    </div>
+  </div>`;
+
+  const html = `<div class="fi">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+      <div>
+        <h2 style="font-family:'Frank Ruhl Libre',serif;font-size:22px;font-weight:700;margin:0 0 5px;">${client.name}</h2>
+        <div style="display:flex;gap:9px;flex-wrap:wrap;align-items:center;">
+          ${client.age>0?`<span style="font-size:12.5px;color:#96A09C;">גיל ${client.age}</span>`:''}
+          ${client.phone?`<span style="font-size:12.5px;color:#96A09C;">${client.phone}</span>`:''}
+          ${client.city?`<span style="font-size:12.5px;color:#96A09C;">${client.city}</span>`:''}
+          ${adv?`<span class="badge badge-default">${adv.name}</span>`:''}
+          ${cat?`<span style="font-size:11.5px;padding:2px 9px;border-radius:100px;background:${cat.color}20;color:${cat.color};border:1px solid ${cat.color}40;">${cat.name}</span>`:''}
+        </div>
+        ${client.notes?`<p style="font-size:12.5px;color:#5E6A66;margin:5px 0 0;">${client.notes}</p>`:''}
+      </div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap;">
+        <button class="btn btn-sm" onclick="navTo('messages')">💬 הודעה</button>
+        ${canEdit?`<button class="btn btn-accent btn-sm" onclick="openEditClient('${client.id}')">✏️ עריכה</button><button class="btn btn-crit btn-sm" onclick="confirmDelete('${client.id}','${client.name}')">🗑 הסרה</button>`:''}
+        ${canEdit?`<button class="btn btn-sm" onclick="toggleShareClient('${client.id}',${!client.isShared})" style="background:${client.isShared?'rgba(111,168,138,.15)':'#1F272B'};border-color:${client.isShared?'#4C7863':'#2A3338'};color:${client.isShared?'#6FA88A':'#96A09C'};">
+          ${client.isShared?'🔓 משותף — לחץ להסתיר':'🔒 חסוי — לחץ לשתף'}
+        </button>`:''}
+        ${!canEdit && client.isShared?`<span class="badge badge-accent">🔓 משותף</span>`:''}
+        ${!canEdit && !client.isShared?`<span class="badge badge-default">🔒 חסוי</span>`:''}
+        <button class="btn btn-sm" onclick="printClient('${client.id}')" style="background:#1F272B;border-color:#364044;">🖨️ הדפסה</button>      </div>
+    </div>
+
+    <div style="margin-bottom:18px;">${healthBarHtml(client,9)}
+      <div style="display:flex;gap:12px;margin-top:5px;font-size:11px;color:#5E6A66;">
+        <span>🟠 הוצאות</span><span>🔴 חוב</span><span>🟢 עודף</span>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:9px;margin-bottom:22px;flex-wrap:wrap;">
+      <div class="stat-card"><div class="stat-label">הכנסה חודשית</div><div class="stat-value" style="color:#6FA88A;">₪${fmt(last.income)}</div></div>
+      <div class="stat-card"><div class="stat-label">הוצאה חודשית</div><div class="stat-value" style="color:#C97B4A;">₪${fmt(last.expense)}</div></div>
+      <div class="stat-card"><div class="stat-label">סך חובות</div><div class="stat-value" style="color:#B5483F;">₪${fmt(dT)}</div></div>
+      <div class="stat-card"><div class="stat-label">חיסכון + נכסים</div><div class="stat-value" style="color:#6FA88A;">₪${fmt(sT+aT)}</div></div>
+      <div class="stat-card"><div class="stat-label">הון נטו</div><div class="stat-value" style="color:${nw>=0?'#6FA88A':'#B5483F'};">₪${fmt(nw)}</div><div style="font-size:10.5px;color:#5E6A66;">${nw>=0?'מאזן חיובי':'מאזן שלילי'}</div></div>
+      ${cityPrice?`<div class="stat-card"><div class="stat-label">מ"ר — ${client.city}</div><div class="stat-value" style="color:#8B6FBB;">₪${fmt(cityPrice)}</div><div style="font-size:10.5px;color:#5E6A66;">הערכה</div></div>`:''}
+    </div>
+
+    <h3 style="font-family:'Frank Ruhl Libre',serif;font-size:15px;font-weight:600;margin:0 0 10px;display:flex;align-items:center;gap:7px;">
+      בעיות שזוהו ${iss.length>0?`<span class="badge ${iss.some(i=>i.severity==='critical')?'badge-crit':'badge-warn'}">${iss.length}</span>`:''}
+    </h3>
+    <div style="margin-bottom:26px;">${issHtml}</div>
+
+    ${forecastHtml}
+
+    <div class="card" style="margin-bottom:14px;">
+      <h4 style="font-family:'Frank Ruhl Libre',serif;font-size:14px;margin:0 0 12px;">תזרים חודשי — 6 חודשים אחרונים</h4>
+      ${monthHtml}
+    </div>
+
+    ${(client.debts||[]).length>0?`<div class="card" style="margin-bottom:14px;">
+      <h4 style="font-family:'Frank Ruhl Libre',serif;font-size:14px;margin:0 0 12px;">חובות</h4>
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <tr style="color:#5E6A66;"><td style="padding:4px 8px;">שם</td><td style="padding:4px 8px;">יתרה</td><td style="padding:4px 8px;">תשלום חודשי</td><td style="padding:4px 8px;">ריבית</td></tr>
+        ${(client.debts||[]).map(d=>`<tr style="border-top:1px solid #2A3338;"><td style="padding:5px 8px;">${d.name}</td><td style="padding:5px 8px;" class="mono">₪${fmt(d.balance)}</td><td style="padding:5px 8px;" class="mono">₪${fmt(d.monthlyPayment)}</td><td style="padding:5px 8px;" class="mono">${d.interestRate}%</td></tr>`).join('')}
+      </table>
+    </div>`:''}
+
+    ${(client.savings||[]).length>0?`<div class="card" style="margin-bottom:14px;">
+      <h4 style="font-family:'Frank Ruhl Libre',serif;font-size:14px;margin:0 0 12px;">חיסכון</h4>
+      ${(client.savings||[]).map(s=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #2A3338;font-size:13px;"><span>${s.type}</span><span class="mono" style="color:#6FA88A;">₪${fmt(s.amount)}</span></div>`).join('')}
+    </div>`:''}
+
+    ${(client.assets||[]).length>0?`<div class="card">
+      <h4 style="font-family:'Frank Ruhl Libre',serif;font-size:14px;margin:0 0 12px;">נכסים</h4>
+      ${(client.assets||[]).map(a=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #2A3338;font-size:13px;"><span>${a.name} <span style="color:#5E6A66;font-size:11px;">${a.type}</span></span><span class="mono" style="color:#C9A24A;">₪${fmt(a.value)}</span></div>`).join('')}
+    </div>`:''}
+  </div>`;
+
+  document.getElementById('main-panel').innerHTML = html;
+}
+
+function calcForecast(client) {
+  const last = (client.monthly||[]).slice(-1)[0]||{};
+  const income = last.income||0;
+  const expense = last.expense||0;
+  const netMonthly = income - expense;
+  const monthlyDebtPayments = (client.debts||[]).reduce((s,d)=>s+(d.monthlyPayment||0),0);
+  const freeCash = netMonthly - monthlyDebtPayments; // מה שנשאר אחרי חובות
+  const savingsNow = (client.savings||[]).reduce((s,x)=>s+(x.amount||0),0);
+  const assetsNow = (client.assets||[]).reduce((s,a)=>s+(a.value||0),0);
+  const debtNow = (client.debts||[]).reduce((s,d)=>s+(d.balance||0),0);
+  const SAVINGS_RATE = 0.035 / 12; // ריבית חיסכון חודשית 3.5%
+
+  function simulate(months) {
+    let savings = savingsNow;
+    let debt = debtNow;
+    let accumulated = 0; // חיסכון מצטבר מעודפים
+
+    for (let i = 0; i < months; i++) {
+      // עדכון חובות
+      let remaining = debt;
+      (client.debts||[]).forEach(d => {
+        const monthlyRate = (d.interestRate||0) / 100 / 12;
+        const payment = Math.min(d.monthlyPayment||0, remaining);
+        if (monthlyRate > 0) {
+          remaining = remaining * (1 + monthlyRate) - payment;
+        } else {
+          remaining = remaining - payment;
+        }
+      });
+      debt = Math.max(0, remaining);
+
+      // חיסכון עם ריבית
+      savings = savings * (1 + SAVINGS_RATE);
+
+      // אם יש עודף — מצטבר כחיסכון
+      if (freeCash > 0) {
+        accumulated += freeCash;
+        savings += freeCash;
+      }
+    }
+
+    const totalSavings = savings;
+    const netWorth = assetsNow + totalSavings - debt;
+    const trend = netWorth > (assetsNow + savingsNow - debtNow) + (netMonthly * months * 0.3) ? 'positive'
+      : netWorth < (assetsNow + savingsNow - debtNow) ? 'negative' : 'stable';
+
+    return {
+      savings: Math.round(totalSavings),
+      debt: Math.round(Math.max(0, debt)),
+      netWorth: Math.round(netWorth),
+      accumulated: Math.round(accumulated),
+      debtFree: debt <= 0,
+      trend,
+    };
+  }
+
+  return {
+    year1: simulate(12),
+    year5: simulate(60),
+  };
+}
+
+function forecastHint(client, f1, f5) {
+  const last = (client.monthly||[]).slice(-1)[0]||{};
+  const net = (last.income||0) - (last.expense||0);
+  const hints = [];
+
+  if (net < 0) {
+    hints.push('התזרים השלילי הנוכחי יקשה מאוד על בניית חיסכון — יש לצמצם הוצאות או להגדיל הכנסות בהקדם.');
+  } else if (net < (last.income||1) * 0.1) {
+    hints.push('העודף החודשי נמוך — אפילו הגדלת חיסכון של ₪500 לחודש תוסיף ₪' + fmt(500*60) + ' בחמש שנים.');
+  }
+  if (f5.debtFree) {
+    hints.push('החובות צפויים להיסגר תוך 5 שנים — לאחר מכן ניתן לנתב את ההחזרים לחיסכון ולהשקעה.');
+  }
+  if (f5.netWorth > f1.netWorth * 3) {
+    hints.push('הצמיחה לאורך זמן משמעותית — הון נטו צפוי לגדול פי ' + (f5.netWorth/Math.max(1,f1.netWorth)).toFixed(1) + ' בחמש שנים לעומת שנה.');
+  }
+  if (!hints.length) {
+    hints.push('המשך ניהול שוטף של ההכנסות וההוצאות ישמר על המגמה הנוכחית.');
+  }
+  return hints.join(' ');
+}
+
+function printClient(id) {
+  const client = clients.find(c=>c.id===id);
+  if (!client) return;
+  const iss = analyzeClient(client);
+  const last = (client.monthly||[]).slice(-1)[0]||{};
+  const dT=(client.debts||[]).reduce((s,d)=>s+(d.balance||0),0);
+  const sT=(client.savings||[]).reduce((s,x)=>s+(x.amount||0),0);
+  const aT=(client.assets||[]).reduce((s,a)=>s+(a.value||0),0);
+  const nw=aT+sT-dT;
+  const adv=advisors.find(a=>a.id===client.advisorId);
+  const cat=categories.find(c=>c.id===client.categoryId);
+  const months=(client.monthly||[]).slice(-6);
+  const sortedIss=[...iss].sort((a,b)=>({critical:0,warn:1,info:2}[a.severity]-{critical:0,warn:1,info:2}[b.severity]));
+
+  const forecastData = calcForecast(client);
+  const f1p = forecastData.year1, f5p = forecastData.year5;
+
+  const win = window.open('','_blank');
+  win.document.write(`<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="UTF-8">
+<title>תיק לקוח — ${client.name}</title>
+<link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;600;700&family=Heebo:wght@400;500;600&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { direction: rtl; font-family: 'Heebo', sans-serif; background: #fff; color: #1a1a1a; font-size: 13px; padding: 32px; }
+  h1 { font-family: 'Frank Ruhl Libre', serif; font-size: 24px; font-weight: 700; margin-bottom: 4px; }
+  h2 { font-family: 'Frank Ruhl Libre', serif; font-size: 16px; font-weight: 600; margin: 20px 0 8px; color: #1a1a1a; border-bottom: 2px solid #eee; padding-bottom: 4px; }
+  .mono { font-family: 'Roboto Mono', monospace; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #1a1a1a; }
+  .header-left { }
+  .header-right { text-align: left; font-size: 12px; color: #666; }
+  .meta { font-size: 12px; color: #666; margin-top: 4px; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+  .stat { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 10px 14px; }
+  .stat-label { font-size: 11px; color: #666; margin-bottom: 3px; }
+  .stat-value { font-family: 'Roboto Mono', monospace; font-size: 16px; font-weight: 600; }
+  .stat-positive { color: #1a7a4a; }
+  .stat-negative { color: #c0392b; }
+  .stat-expense { color: #c0392b; }
+  .stat-debt { color: #c0392b; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 12.5px; }
+  th { background: #f8f9fa; padding: 7px 10px; text-align: right; font-weight: 600; border: 1px solid #dee2e6; font-size: 12px; color: #444; }
+  td { padding: 7px 10px; border: 1px solid #dee2e6; }
+  tr:nth-child(even) { background: #f8f9fa; }
+  .issue { display: flex; gap: 8px; padding: 8px 10px; border-radius: 6px; margin-bottom: 7px; }
+  .issue-critical { background: #fff5f5; border: 1px solid #fed7d7; }
+  .issue-warn { background: #fffbf0; border: 1px solid #feebc8; }
+  .issue-info { background: #f0f9ff; border: 1px solid #bee3f8; }
+  .issue-icon { flex-shrink: 0; font-size: 14px; }
+  .issue-title { font-weight: 600; font-size: 12.5px; }
+  .issue-detail { font-size: 12px; color: #555; margin-top: 2px; }
+  .badge { display: inline-block; font-size: 10px; padding: 1px 7px; border-radius: 100px; margin-right: 5px; }
+  .badge-crit { background: #fff5f5; color: #c53030; border: 1px solid #fed7d7; }
+  .badge-warn { background: #fffbf0; color: #c05621; border: 1px solid #feebc8; }
+  .badge-info { background: #f0f9ff; color: #2b6cb0; border: 1px solid #bee3f8; }
+  .footer { margin-top: 32px; padding-top: 12px; border-top: 1px solid #eee; font-size: 11px; color: #999; display: flex; justify-content: space-between; }
+  .health-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin: 8px 0 4px; }
+  .no-print { display: none; }
+  @media print {
+    body { padding: 16px; }
+    .page-break { page-break-before: always; }
+  }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-left">
+      <h1>${client.name}</h1>
+      <div class="meta">
+        ${client.age>0?`גיל ${client.age} · `:''}${client.phone||''} ${client.city?`· ${client.city}`:''}
+      </div>
+      <div class="meta" style="margin-top:3px;">
+        ${adv?`יועץ: ${adv.name}`:''}
+        ${cat?` · קטגוריה: ${cat.name}`:''}
+        ${client.notes?` · ${client.notes}`:''}
+      </div>
+    </div>
+    <div class="header-right">
+      <div style="font-weight:600;font-size:13px;">לוח ייעוץ פיננסי</div>
+      <div>תאריך הדפסה: ${new Date().toLocaleDateString('he-IL')}</div>
+      <div>הופק על ידי: ${currentUser.name}</div>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">הכנסה חודשית</div>
+      <div class="stat-value stat-positive mono">₪${fmt(last.income)}</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">הוצאה חודשית</div>
+      <div class="stat-value stat-expense mono">₪${fmt(last.expense)}</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">עודף חודשי</div>
+      <div class="stat-value ${(last.income-last.expense)>=0?'stat-positive':'stat-negative'} mono">₪${fmt(last.income-last.expense)}</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">סך חובות</div>
+      <div class="stat-value stat-debt mono">₪${fmt(dT)}</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">חיסכון ונכסים</div>
+      <div class="stat-value stat-positive mono">₪${fmt(sT+aT)}</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">הון נטו</div>
+      <div class="stat-value ${nw>=0?'stat-positive':'stat-negative'} mono">₪${fmt(nw)}</div>
+    </div>
+  </div>
+
+  ${iss.length>0?`
+  <h2>בעיות כלכליות שזוהו (${iss.length})</h2>
+  ${sortedIss.map(is=>`
+    <div class="issue issue-${is.severity}">
+      <div class="issue-icon">${is.severity==='critical'?'🔴':is.severity==='warn'?'🟡':'🔵'}</div>
+      <div>
+        <div class="issue-title">${is.title} <span class="badge badge-${is.severity}">${is.category}</span></div>
+        <div class="issue-detail">${is.detail}</div>
+      </div>
+    </div>`).join('')}`:'<h2>בעיות כלכליות</h2><p style="color:#1a7a4a;padding:10px 0;">✅ לא זוהו בעיות כלכליות מהותיות.</p>'}
+
+  <h2>תזרים מזומנים — 6 חודשים אחרונים</h2>
+  <table>
+    <tr><th>חודש</th><th>הכנסה</th><th>הוצאה</th><th>עודף</th></tr>
+    ${months.map(m=>{const net=m.income-m.expense;return`<tr><td>${m.label}</td><td class="mono" style="color:#1a7a4a;">₪${fmt(m.income)}</td><td class="mono" style="color:#c0392b;">₪${fmt(m.expense)}</td><td class="mono" style="color:${net>=0?'#1a7a4a':'#c0392b'};">₪${fmt(net)}</td></tr>`;}).join('')}
+  </table>
+
+  ${(client.debts||[]).length>0?`
+  <h2>חובות</h2>
+  <table>
+    <tr><th>שם</th><th>יתרה</th><th>תשלום חודשי</th><th>ריבית</th></tr>
+    ${(client.debts||[]).map(d=>`<tr><td>${d.name}</td><td class="mono">₪${fmt(d.balance)}</td><td class="mono">₪${fmt(d.monthlyPayment)}</td><td class="mono">${d.interestRate}%</td></tr>`).join('')}
+    <tr style="background:#fff5f5;font-weight:600;"><td>סה"כ</td><td class="mono">₪${fmt(dT)}</td><td class="mono">₪${fmt((client.debts||[]).reduce((s,d)=>s+(d.monthlyPayment||0),0))}</td><td></td></tr>
+  </table>`:''}
+
+  ${(client.savings||[]).length>0?`
+  <h2>חיסכון</h2>
+  <table>
+    <tr><th>סוג</th><th>סכום</th></tr>
+    ${(client.savings||[]).map(s=>`<tr><td>${s.type}</td><td class="mono" style="color:#1a7a4a;">₪${fmt(s.amount)}</td></tr>`).join('')}
+    <tr style="background:#f0fff4;font-weight:600;"><td>סה"כ</td><td class="mono">₪${fmt(sT)}</td></tr>
+  </table>`:''}
+
+  ${(client.assets||[]).length>0?`
+  <h2>נכסים</h2>
+  <table>
+    <tr><th>שם</th><th>סוג</th><th>שווי</th></tr>
+    ${(client.assets||[]).map(a=>`<tr><td>${a.name}</td><td>${a.type}</td><td class="mono" style="color:#7d5a00;">₪${fmt(a.value)}</td></tr>`).join('')}
+    <tr style="background:#fffbf0;font-weight:600;"><td colspan="2">סה"כ</td><td class="mono">₪${fmt(aT)}</td></tr>
+  </table>`:''}
+
+  <h2>תחזית כלכלית</h2>
+  <table>
+    <tr><th></th><th>עוד שנה</th><th>עוד 5 שנים</th></tr>
+    <tr><td>חיסכון צפוי</td><td class="mono" style="color:#1a7a4a;">₪${fmt(f1p.savings)}</td><td class="mono" style="color:#1a7a4a;">₪${fmt(f5p.savings)}</td></tr>
+    <tr><td>יתרת חובות</td><td class="mono" style="color:#c0392b;">₪${fmt(f1p.debt)}</td><td class="mono" style="color:#c0392b;">₪${fmt(f5p.debt)}</td></tr>
+    <tr><td>הון נטו צפוי</td><td class="mono" style="font-weight:600;color:${f1p.netWorth>=0?'#1a7a4a':'#c0392b'};">₪${fmt(f1p.netWorth)}</td><td class="mono" style="font-weight:600;color:${f5p.netWorth>=0?'#1a7a4a':'#c0392b'};">₪${fmt(f5p.netWorth)}</td></tr>
+    <tr><td>חיסכון מצטבר</td><td class="mono">₪${fmt(f1p.accumulated)}</td><td class="mono">₪${fmt(f5p.accumulated)}</td></tr>
+    <tr><td>מגמה</td><td>${f1p.trend==='positive'?'✅ חיובית':f1p.trend==='negative'?'⚠️ שלילית':'➡️ יציבה'}</td><td>${f5p.trend==='positive'?'✅ חיובית':f5p.trend==='negative'?'⚠️ שלילית':'➡️ יציבה'}${f5p.debtFree?' 🎉 חובות נסגרים':''}</td></tr>
+  </table>
+  <div style="background:#f8f9fa;border:1px solid #e9ecef;border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#555;line-height:1.7;">
+    💡 ${forecastHint(client, f1p, f5p)}
+    <br><span style="color:#aaa;font-size:11px;">* תחזית מבוססת על נתונים נוכחיים בהנחת יציבות. אינה מהווה ייעוץ פיננסי מחייב.</span>
+  </div>
+
+  <div class="footer">
+    <span>לוח ייעוץ פיננסי · הופק על ידי ${currentUser.name}</span>
+    <span>${new Date().toLocaleDateString('he-IL', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}</span>
+  </div>
+
+  <script>window.onload=()=>window.print();<\/script>
+</body>
+</html>`);
+  win.document.close();
+}
+
+// ═══════════════════════════════════
+// Client Form
+// ═══════════════════════════════════
+function openNewClient() {
+  selectedClientId = null;
+  renderSidebar();
+  // אם advisors/categories עדיין לא נטענו — צור ברירות מחדל
+  if (advisors.length === 0) {
+    advisors = [{ id: currentUser.uid || 'adv1', name: currentUser.name, email: currentUser.email || '' }];
+  }
+  if (categories.length === 0) {
+    categories = [
+      { id: 'cat1', name: 'פרטיים', color: '#6FA88A' },
+      { id: 'cat2', name: 'עסקיים', color: '#C9A24A' },
+    ];
+  }
+  openClientModal(null);
+}
+
+function openEditClient(id) {
+  const client = clients.find(c=>c.id===id);
+  if (client) openClientModal(client);
+}
+
+function openClientModal(client) {
+  document.getElementById('modal-client-title').textContent = client ? `עריכת תיק — ${client.name}` : 'הוספת לקוח חדש';
+  document.getElementById('modal-client-body').innerHTML = buildClientForm(client);
+  document.getElementById('modal-client').classList.remove('hidden');
+}
+
+function buildClientForm(client) {
+  const last = client?.monthly?.slice(-1)[0]||{};
+  const myAdvId = advisors.find(a=>a.name===currentUser.name)?.id||advisors[0]?.id||'';
+  const advId = client?.advisorId||(currentUser.role==='advisor'?myAdvId:advisors[0]?.id||'');
+  const catId = client?.categoryId||categories[0]?.id||'';
+  const debts = client?.debts?.length ? client.debts : [{id:uid(),name:'',balance:'',monthlyPayment:'',interestRate:''}];
+  const savings = client?.savings?.length ? client.savings : [{id:uid(),type:"עו\"ש",amount:''}];
+  const assets = client?.assets?.length ? client.assets : [{id:uid(),name:'',type:"נדל\"ן",value:''}];
+
+  window._formDebts = JSON.parse(JSON.stringify(debts));
+  window._formSavings = JSON.parse(JSON.stringify(savings));
+  window._formAssets = JSON.parse(JSON.stringify(assets));
+  window._editingClientId = client?.id||null;
+
+  return `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
+      <button type="button" class="btn btn-sm" onclick="closeModal('modal-client');setTimeout(openScanFile,100);" style="border-color:#4C7863;color:#6FA88A;">📂 מלא מקובץ</button>
+    </div>
+    <div class="form-grid">
+      <div><label class="form-label">שם *</label><input type="text" id="f-name" value="${client?.name||''}" placeholder="שם מלא"></div>
+      <div><label class="form-label">גיל</label><input type="number" id="f-age" value="${client?.age||''}" placeholder="42"></div>
+      <div><label class="form-label">טלפון</label><input type="text" id="f-phone" value="${client?.phone||''}" placeholder="050-0000000"></div>
+      <div><label class="form-label">הערות</label><input type="text" id="f-notes" value="${client?.notes||''}" placeholder="מצב משפחתי..."></div>
+      <div><label class="form-label">עיר</label><select id="f-city">${CITIES.map(c=>`<option value="${c}"${(client?.city||'תל אביב')===c?' selected':''}>${c}</option>`).join('')}</select></div>
+      <div><label class="form-label">יועץ אחראי</label><select id="f-adv" ${currentUser.role==='advisor'?'disabled':''}>${advisors.map(a=>`<option value="${a.id}"${advId===a.id?' selected':''}>${a.name}</option>`).join('')}</select></div>
+      <div><label class="form-label">קטגוריה</label><select id="f-cat">${categories.map(c=>`<option value="${c.id}"${catId===c.id?' selected':''}>${c.name}</option>`).join('')}</select></div>
+    </div>
+    <div class="form-section">הכנסות והוצאות</div>
+    <div class="form-grid">
+      <div><label class="form-label">הכנסה חודשית (₪)</label><input type="number" id="f-income" value="${last.income||''}" placeholder="15000"></div>
+      <div><label class="form-label">הוצאה חודשית (₪)</label><input type="number" id="f-expense" value="${last.expense||''}" placeholder="12000"></div>
+    </div>
+    <div class="form-section">חובות</div>
+    <div id="f-debts-list">${debts.map(d=>debtRowHtml(d)).join('')}</div>
+    <button type="button" class="btn btn-ghost btn-sm" onclick="addFormRow('debt')" style="color:#6FA88A;">+ הוספת חוב</button>
+    <div class="form-section">חיסכון</div>
+    <div id="f-savings-list">${savings.map(s=>savingsRowHtml(s)).join('')}</div>
+    <button type="button" class="btn btn-ghost btn-sm" onclick="addFormRow('savings')" style="color:#6FA88A;">+ הוספת חיסכון</button>
+    <div class="form-section">נכסים</div>
+    <div id="f-assets-list">${assets.map(a=>assetRowHtml(a)).join('')}</div>
+    <button type="button" class="btn btn-ghost btn-sm" onclick="addFormRow('asset')" style="color:#6FA88A;">+ הוספת נכס</button>
+    <div style="display:flex;gap:9px;margin-top:22px;padding-bottom:4px;">
+      <button class="btn btn-accent" onclick="saveClientForm()">${client?'שמירת שינויים':'הוספת לקוח'}</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-client')">ביטול</button>
+    </div>`;
+}
+
+function debtRowHtml(d) {
+  return `<div class="form-row" id="drow-${d.id}">
+    <input style="flex:2;" type="text" value="${d.name||''}" placeholder="שם החוב" oninput="updateFormRow('debt','${d.id}','name',this.value)">
+    <input style="flex:1;" type="number" value="${d.balance||''}" placeholder="יתרה ₪" oninput="updateFormRow('debt','${d.id}','balance',this.value)">
+    <input style="flex:1;" type="number" value="${d.monthlyPayment||''}" placeholder="תשלום ₪" oninput="updateFormRow('debt','${d.id}','monthlyPayment',this.value)">
+    <input style="flex:1;" type="number" value="${d.interestRate||''}" placeholder="ריבית %" oninput="updateFormRow('debt','${d.id}','interestRate',this.value)">
+    <button type="button" onclick="removeFormRow('debt','${d.id}')" style="color:#5E6A66;padding:4px;flex-shrink:0;">✕</button>
+  </div>`;
+}
+function savingsRowHtml(s) {
+  const types=["עו\"ש","פיקדון","פנסיה","קרן השתלמות","גמל","אחר"];
+  return `<div class="form-row" id="srow-${s.id}">
+    <select style="flex:1;" onchange="updateFormRow('savings','${s.id}','type',this.value)">${types.map(t=>`<option${s.type===t?' selected':''}>${t}</option>`).join('')}</select>
+    <input style="flex:1;" type="number" value="${s.amount||''}" placeholder="סכום ₪" oninput="updateFormRow('savings','${s.id}','amount',this.value)">
+    <button type="button" onclick="removeFormRow('savings','${s.id}')" style="color:#5E6A66;padding:4px;flex-shrink:0;">✕</button>
+  </div>`;
+}
+function assetRowHtml(a) {
+  const types=["נדל\"ן","תיק השקעות","רכב","אחר"];
+  return `<div class="form-row" id="arow-${a.id}">
+    <input style="flex:2;" type="text" value="${a.name||''}" placeholder="שם הנכס" oninput="updateFormRow('asset','${a.id}','name',this.value)">
+    <select style="flex:1;" onchange="updateFormRow('asset','${a.id}','type',this.value)">${types.map(t=>`<option${a.type===t?' selected':''}>${t}</option>`).join('')}</select>
+    <input style="flex:1;" type="number" value="${a.value||''}" placeholder="שווי ₪" oninput="updateFormRow('asset','${a.id}','value',this.value)">
+    <button type="button" onclick="removeFormRow('asset','${a.id}')" style="color:#5E6A66;padding:4px;flex-shrink:0;">✕</button>
+  </div>`;
+}
+
+function updateFormRow(type, id, field, value) {
+  const arr = type==='debt'?window._formDebts:type==='savings'?window._formSavings:window._formAssets;
+  const row = arr.find(r=>r.id===id);
+  if (row) row[field] = value;
+}
+function addFormRow(type) {
+  const newId = uid();
+  if (type==='debt') { window._formDebts.push({id:newId,name:'',balance:'',monthlyPayment:'',interestRate:''}); document.getElementById('f-debts-list').insertAdjacentHTML('beforeend',debtRowHtml({id:newId,name:'',balance:'',monthlyPayment:'',interestRate:''})); }
+  if (type==='savings') { window._formSavings.push({id:newId,type:"עו\"ש",amount:''}); document.getElementById('f-savings-list').insertAdjacentHTML('beforeend',savingsRowHtml({id:newId,type:"עו\"ש",amount:''})); }
+  if (type==='asset') { window._formAssets.push({id:newId,name:'',type:"נדל\"ן",value:''}); document.getElementById('f-assets-list').insertAdjacentHTML('beforeend',assetRowHtml({id:newId,name:'',type:"נדל\"ן",value:''})); }
+}
+function removeFormRow(type, id) {
+  if (type==='debt') { window._formDebts=window._formDebts.filter(r=>r.id!==id); document.getElementById('drow-'+id)?.remove(); }
+  if (type==='savings') { window._formSavings=window._formSavings.filter(r=>r.id!==id); document.getElementById('srow-'+id)?.remove(); }
+  if (type==='asset') { window._formAssets=window._formAssets.filter(r=>r.id!==id); document.getElementById('arow-'+id)?.remove(); }
+}
+
+async function saveClientForm() {
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) { alert('נא להזין שם לקוח'); return; }
+  const existingClient = window._editingClientId ? clients.find(c=>c.id===window._editingClientId) : null;
+  const ml = [...(existingClient?.monthly||monthsBack(5))];
+  const mk = monthsBack(1)[0];
+  const ei = ml.findIndex(m=>m.key===mk.key);
+  const me = {...mk, income:parseFloat(document.getElementById('f-income').value)||0, expense:parseFloat(document.getElementById('f-expense').value)||0};
+  if(ei>=0) ml[ei]=me; else ml.push(me);
+
+  const data = {
+    name, age:parseFloat(document.getElementById('f-age').value)||0,
+    phone:document.getElementById('f-phone').value.trim(),
+    notes:document.getElementById('f-notes').value.trim(),
+    city:document.getElementById('f-city').value,
+    advisorId:document.getElementById('f-adv').value,
+    categoryId:document.getElementById('f-cat').value,
+    monthly:ml,
+    debts:window._formDebts.filter(d=>d.name?.trim()).map(d=>({...d,balance:parseFloat(d.balance)||0,monthlyPayment:parseFloat(d.monthlyPayment)||0,interestRate:parseFloat(d.interestRate)||0})),
+    savings:window._formSavings.filter(s=>parseFloat(s.amount)>0).map(s=>({...s,amount:parseFloat(s.amount)||0})),
+    assets:window._formAssets.filter(a=>a.name?.trim()).map(a=>({...a,value:parseFloat(a.value)||0})),
+    updatedAt:Date.now(),
+    updatedBy:currentUser.name,
+  };
+
+  if (window._editingClientId) {
+    await db.collection('clients').doc(window._editingClientId).update(data);
+    selectedClientId = window._editingClientId;
+  } else {
+    data.createdAt = Date.now();
+    const ref = await db.collection('clients').add(data);
+    selectedClientId = ref.id;
+  }
+  closeModal('modal-client');
+}
+
+// ═══════════════════════════════════
+// Delete
+// ═══════════════════════════════════
+async function toggleShareClient(id, share) {
+  await db.collection('clients').doc(id).update({
+    isShared: share,
+    updatedAt: Date.now(),
+    updatedBy: currentUser.name,
+  });
+}
+
+function confirmDelete(id, name) {
+  document.getElementById('delete-text').innerHTML = `האם להסיר את <strong>${name}</strong>? פעולה זו אינה הפיכה.`;
+  document.getElementById('delete-confirm-btn').onclick = async () => {
+    await db.collection('clients').doc(id).delete();
+    selectedClientId = null;
+    document.getElementById('main-panel').innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:60vh;flex-direction:column;gap:14px;color:#5E6A66;"><div style="font-size:40px;">📁</div><p>בחר לקוח מהרשימה</p></div>`;
+    closeModal('modal-delete');
+  };
+  document.getElementById('modal-delete').classList.remove('hidden');
+}
+
+// ═══════════════════════════════════
+// File Scan
+// ═══════════════════════════════════
+function openScanFile() {
+  document.getElementById('modal-scan-body').innerHTML = `
+    <p style="font-size:13.5px;color:#96A09C;margin-bottom:16px;line-height:1.6;">
+      העלה קובץ CSV או טקסט — המערכת תחלץ ממנו נתונים פיננסיים ותמלא את התיק אוטומטית.
+    </p>
+    <div style="background:#1F272B;border:1.5px dashed #2A3338;border-radius:12px;padding:32px 24px;text-align:center;margin-bottom:16px;">
+      <div style="font-size:32px;margin-bottom:12px;">📂</div>
+      <p style="margin:0 0 6px;font-size:14px;font-weight:600;">לחץ לבחירת קובץ</p>
+      <p style="margin:0 0 14px;font-size:12px;color:#6FA88A;font-weight:600;">נתמך: CSV · Excel · TXT</p>
+      <label style="display:inline-block;cursor:pointer;">
+        <span style="display:inline-flex;align-items:center;gap:8px;background:#6FA88A;color:#0E1413;font-weight:700;font-size:14px;padding:10px 24px;border-radius:9px;">
+          📁 בחר קובץ
+        </span>
+        <input type="file" accept=".csv,.xlsx,.xls,.txt,.pdf,.jpg,.jpeg,.png,.doc,.docx" style="position:absolute;opacity:0;width:1px;height:1px;" onchange="handleScanFile(event)">
+      </label>
+    </div>
+    <p style="font-size:12px;color:#5E6A66;text-align:center;">כל הסוגים נתמכים: CSV · Excel · PDF · תמונה</p>`;
+  document.getElementById('modal-scan').classList.remove('hidden');
+}
+
+function handleScanFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const body = document.getElementById('modal-scan-body');
+  body.innerHTML = `<div style="text-align:center;padding:48px 0;">
+    <div class="spin" style="width:40px;height:40px;border:3px solid #2A3338;border-top-color:#6FA88A;border-radius:50%;margin:0 auto 18px;display:block;"></div>
+    <p style="font-size:15px;font-weight:600;margin:0 0 8px;">סורק את הקובץ…</p>
+    <p style="color:#96A09C;font-size:13px;">${file.name}</p>
+    <p style="color:#5E6A66;font-size:12px;margin-top:8px;">Claude מנתח את המסמך…</p>
+  </div>`;
+
+  const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
+  const isPDF = file.type === 'application/pdf';
+  const isImg = file.type.startsWith('image/');
+  const isCSV = file.name.endsWith('.csv') || file.type === 'text/csv';
+
+  if (isExcel) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const wb = XLSX.read(e.target.result, {type:'binary'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+
+        // נסה קודם מסילה-צמיחה (גיליונות מרובים)
+        let result = extractFromMasilaCzmichaTemplate(wb);
+        // אחר כך מסילה רגילה (גיליון יחיד)
+        if (!result) result = extractFromMasilaTemplate(ws);
+        // אחר כך CSV רגיל
+        if (!result) {
+          try { result = parseCSV(XLSX.utils.sheet_to_csv(ws)); } catch(e2) {}
+        }
+        // fallback לחילוץ טקסט חופשי
+        if (!result) result = extractFromText(XLSX.utils.sheet_to_txt(ws));
+
+        showScanResult(result, file.name);
+      } catch(err) {
+        showScanError(body, err.message);
+      }
+    };
+    reader.readAsBinaryString(file);
+
+  } else if (isPDF || isImg) {
+    // שליחה ל-Netlify Function שקוראת ל-Claude API מהשרת
+    const reader = new FileReader();
+    reader.onload = async e => {
+      try {
+        const b64 = e.target.result.split(',')[1];
+        const res = await fetch('/api/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fileData: b64,
+            fileType: file.type,
+            fileName: file.name,
+          }),
+        });
+        const result = await res.json();
+        if (result.error) throw new Error(result.error);
+        showScanResult(result, file.name);
+      } catch(err) {
+        showScanError(body, 'לא הצלחתי לנתח את הקובץ: ' + err.message);
+      }
+    };
+    reader.readAsDataURL(file);
+
+  } else {
+    // CSV / טקסט רגיל
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const text = e.target.result;
+        let result;
+        if (isCSV) {
+          result = parseCSV(text);
+        } else {
+          result = extractFromText(text);
+        }
+        showScanResult(result, file.name);
+      } catch(err) {
+        showScanError(body, err.message);
+      }
+    };
+    reader.readAsText(file, 'UTF-8');
+  }
+}
+
+function showScanError(body, msg) {
+  body.innerHTML = `<div style="text-align:center;padding:32px 0;">
+    <div style="font-size:36px;margin-bottom:14px;">⚠️</div>
+    <p style="font-size:15px;font-weight:600;margin:0 0 8px;">שגיאה בקריאת הקובץ</p>
+    <p style="color:#96A09C;font-size:13px;margin:0 0 20px;">${msg}</p>
+    <button class="btn btn-accent" onclick="openScanFile()">נסה שוב</button>
+  </div>`;
+}
+
+function parseCSV(text) {
+  const lines = text.split(/\r?\n/).filter(l=>l.trim());
+  if (lines.length < 2) throw new Error('הקובץ ריק');
+  const split = l => l.split(',').map(c=>c.trim().replace(/^"|"$/g,''));
+  const headers = split(lines[0]).map(h=>h.toLowerCase().trim());
+  const fi = (...keys) => headers.findIndex(h=>keys.some(k=>h.includes(k)));
+  const idx = {
+    name:fi('name','שם'), age:fi('age','גיל'), phone:fi('phone','טלפון'),
+    city:fi('city','עיר'), income:fi('income','הכנס','הכנסה'),
+    expense:fi('expense','הוצא','הוצאה'), debt:fi('debt','חוב'),
+    payment:fi('payment','תשלום'), interest:fi('interest','ריבית'),
+    savings:fi('saving','חיסכון'), assets:fi('asset','נכס'),
+    debtname:fi('debt_name','שם_חוב','שם חוב'),
+  };
+  const pn = v => { const n=parseFloat(String(v||'').replace(/[^\d.-]/g,'')); return isNaN(n)?null:n; };
+
+  // אם יש רק שורה אחת של נתונים — לקוח בודד
+  if (lines.length === 2) {
+    const cols = split(lines[1]);
+    const g = i => i>=0 ? (cols[i]||'') : '';
+    return {
+      name:g(idx.name)||null, age:pn(g(idx.age)), phone:g(idx.phone)||null,
+      city:g(idx.city)||null, income:pn(g(idx.income)), expense:pn(g(idx.expense)),
+      debts:pn(g(idx.debt))>0?[{name:g(idx.debtname)||'חוב מיובא',balance:pn(g(idx.debt)),monthlyPayment:pn(g(idx.payment))||0,interestRate:pn(g(idx.interest))||0}]:[],
+      savings:pn(g(idx.savings))>0?[{type:"עו\"ש",amount:pn(g(idx.savings))}]:[],
+      assets:pn(g(idx.assets))>0?[{name:'נכס מיובא',type:'אחר',value:pn(g(idx.assets))}]:[],
+    };
+  }
+
+  // מספר שורות — מחזיר מערך של לקוחות
+  const clients_arr = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = split(lines[i]);
+    const g = j => j>=0 ? (cols[j]||'') : '';
+    const name = g(idx.name);
+    if (!name) continue;
+    clients_arr.push({
+      name, age:pn(g(idx.age))||0, phone:g(idx.phone)||'',
+      city:g(idx.city)||null, income:pn(g(idx.income)), expense:pn(g(idx.expense)),
+      debts:pn(g(idx.debt))>0?[{name:g(idx.debtname)||'חוב מיובא',balance:pn(g(idx.debt)),monthlyPayment:pn(g(idx.payment))||0,interestRate:pn(g(idx.interest))||0}]:[],
+      savings:pn(g(idx.savings))>0?[{type:"עו\"ש",amount:pn(g(idx.savings))}]:[],
+      assets:pn(g(idx.assets))>0?[{name:'נכס מיובא',type:'אחר',value:pn(g(idx.assets))}]:[],
+    });
+  }
+  if (clients_arr.length === 1) return clients_arr[0];
+  return { _multipleClients: true, clients: clients_arr };
+}
+
+// חילוץ מתבנית מסילה / תבנית ייעוצית מורכבת
+function extractFromMasilaTemplate(ws) {
+  try {
+    const data = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+    const pn = v => { const n = parseFloat(String(v||'').replace(/[,\s]/g,'')); return isNaN(n) ? null : n; };
+    let income = null, expense = null;
+    const debts = [], savings = [], assets = [];
+
+    for (let r = 0; r < data.length; r++) {
+      const row = data[r];
+      for (let c = 0; c < row.length; c++) {
+        const cell = String(row[c]||'').trim();
+
+        if (cell === 'סה"כ' || cell === "סה\"כ") {
+          for (let cc = c+1; cc < Math.min(c+4, row.length); cc++) {
+            const v = pn(row[cc]);
+            if (v && v > 1000 && v < 200000) { if (!income) income = v; break; }
+          }
+        }
+        if (cell.includes('הוצאות כולל חובות')) {
+          for (let cc = c+1; cc < Math.min(c+6, row.length); cc++) {
+            const v = pn(row[cc]);
+            if (v && v > 500 && v < 200000) { expense = v; break; }
+          }
+        }
+        if (cell.includes('הוצאות ללא חובות') && !expense) {
+          for (let cc = c+1; cc < Math.min(c+6, row.length); cc++) {
+            const v = pn(row[cc]);
+            if (v && v > 500 && v < 200000) { expense = v; break; }
+          }
+        }
+        const debtKW = ['משכנתא','הלוואה','בנק','מזרחי','פועלים','לאומי','מקס','ויזה','אשראי','גמ"ח','גמח'];
+        if (debtKW.some(k => cell.includes(k)) && cell.length < 30) {
+          for (let cc = c+1; cc < Math.min(c+5, row.length); cc++) {
+            const v = pn(row[cc]);
+            if (v && v > 100 && v < 100000) {
+              let balance = v, monthly = 0;
+              for (let cc2 = cc+1; cc2 < Math.min(cc+4, row.length); cc2++) {
+                const v2 = pn(row[cc2]);
+                if (v2 && v2 > 0 && v2 < v) { monthly = v2; break; }
+              }
+              debts.push({ name: cell, balance, monthlyPayment: monthly, interestRate: 0 });
+              break;
+            }
+          }
+        }
+        const savKW = ['פנסיה','קרן השתלמות','גמל','פיקדון','חיסכון','פוליסה'];
+        if (savKW.some(k => cell.includes(k)) && cell.length < 25) {
+          for (let cc = c+1; cc < Math.min(c+4, row.length); cc++) {
+            const v = pn(row[cc]);
+            if (v && v > 100) { savings.push({ type: cell, amount: v }); break; }
+          }
+        }
+        const assetKW = ['דירה','נכס','מקרקעין','רכב'];
+        if (assetKW.some(k => cell.includes(k)) && !cell.includes('ביטוח') && cell.length < 25) {
+          for (let cc = c+1; cc < Math.min(c+4, row.length); cc++) {
+            const v = pn(row[cc]);
+            if (v && v > 50000) { assets.push({ name: cell, type: cell.includes('רכב')?'רכב':'נדל"ן', value: v }); break; }
+          }
+        }
+      }
+    }
+    if (!income && !expense) return null;
+    return { name:null, age:null, phone:null, city:null, income, expense, debts:debts.slice(0,8), savings:savings.slice(0,6), assets:assets.slice(0,4) };
+  } catch(e) { return null; }
+}
+
+// חילוץ מתבנית מסילה-צמיחה (גיליונות מרובים)
+function extractFromMasilaCzmichaTemplate(wb) {
+  try {
+    const pn = v => { const n = parseFloat(String(v||'').replace(/[,\s]/g,'')); return isNaN(n) ? null : n; };
+    let income = null, expense = null;
+    const debts = [], savings = [], assets = [];
+
+    // ── גיליון הכנסות והוצאות חודשיות ──
+    const incSheet = wb.Sheets['הכנסות והוצאות חודשיות'];
+    if (incSheet) {
+      const d = XLSX.utils.sheet_to_json(incSheet, {header:1, defval:''});
+      for (const row of d) {
+        for (let c = 0; c < row.length; c++) {
+          const cell = String(row[c]||'').trim();
+          if ((cell === 'סה"כ' || cell === "סה\"כ") && !income) {
+            for (let cc = c+1; cc < Math.min(c+5, row.length); cc++) {
+              const v = pn(row[cc]);
+              if (v && v > 2000 && v < 200000) { income = v; break; }
+            }
+          }
+          if (cell.includes('סה"כ') && cell.includes('הוצא') && !expense) {
+            for (let cc = c+1; cc < Math.min(c+6, row.length); cc++) {
+              const v = pn(row[cc]);
+              if (v && v > 500 && v < 200000) { expense = v; break; }
+            }
+          }
+        }
+      }
+    }
+
+    // ── גיליון סיכום דוחות ──
+    const sumSheet = wb.Sheets['סיכום דוחות'];
+    if (sumSheet) {
+      const d = XLSX.utils.sheet_to_json(sumSheet, {header:1, defval:''});
+      for (const row of d) {
+        for (let c = 0; c < row.length; c++) {
+          const cell = String(row[c]||'').trim();
+          if (cell.includes('סך ההכנסות בחודש') && !income) {
+            for (let cc = c+1; cc < Math.min(c+5, row.length); cc++) {
+              const v = pn(row[cc]);
+              if (v && v > 1000) { income = v; break; }
+            }
+          }
+          if (cell.includes('הוצאות בחודש') && cell.includes('כולל') && !expense) {
+            for (let cc = c+1; cc < Math.min(c+5, row.length); cc++) {
+              const v = pn(row[cc]);
+              if (v && v > 500) { expense = v; break; }
+            }
+          }
+        }
+      }
+    }
+
+    // ── גיליון התחייבויות ──
+    const debSheet = wb.Sheets['התחיבויות'];
+    if (debSheet) {
+      const d = XLSX.utils.sheet_to_json(debSheet, {header:1, defval:''});
+      for (const row of d) {
+        const name = String(row[2]||'').trim();
+        const balance = pn(row[3]);
+        const monthly = pn(row[4]);
+        const rate = pn(row[6]);
+        if (name && balance && balance > 0 && name !== 'שם המלווה' && name !== 'סה"כ') {
+          debts.push({ name, balance, monthlyPayment: monthly||0, interestRate: rate||0 });
+        }
+      }
+    }
+
+    // ── גיליון נכסים ──
+    const assetSheet = wb.Sheets['נכסים'];
+    if (assetSheet) {
+      const d = XLSX.utils.sheet_to_json(assetSheet, {header:1, defval:''});
+      for (const row of d) {
+        // נדל"ן
+        const assetName = String(row[1]||'').trim();
+        const assetVal = pn(row[2]);
+        if (assetName && assetVal && assetVal > 0 && !assetName.includes('שם') && !assetName.includes('ס"ה')) {
+          assets.push({ name: assetName, type: 'נדל"ן', value: assetVal });
+        }
+        // חיסכון/פנסיה
+        const savCat = String(row[1]||'').trim();
+        const savVal = pn(row[3]);
+        const savKW = ['קרן פנסיה','קופת גמל','גמל להשקעה','קרן השתלמות','פוליסת חסכון','קרן כספית','חיסכון בנקאי'];
+        if (savKW.includes(savCat) && savVal && savVal > 0) {
+          savings.push({ type: savCat, amount: savVal });
+        }
+      }
+    }
+
+    if (!income && debts.length === 0 && assets.length === 0) return null;
+    return { name:null, age:null, phone:null, city:null, income, expense, debts:debts.slice(0,8), savings:savings.slice(0,6), assets:assets.slice(0,4) };
+  } catch(e) { return null; }
+}
+
+function extractFromText(text) {
+  const find = (...pats) => { for(const p of pats){const m=text.match(p);if(m)return m[1]?.trim();} return null; };
+  const findNum = (...pats) => { for(const p of pats){const m=text.match(p);if(m){const n=parseFloat(String(m[1]).replace(/[^\d.]/g,''));if(!isNaN(n))return n;}} return null; };
+  return {
+    name:find(/שם[:\s]+([^\n\r,]{2,30})/i,/name[:\s]+([^\n\r,]{2,30})/i),
+    age:findNum(/גיל[:\s]+(\d{2})/i,/age[:\s]+(\d{2})/i),
+    phone:find(/טלפון[:\s]+([\d\-+]{7,15})/i,/(05\d[\-\s]?\d{7})/),
+    city:find(/עיר[:\s]+([^\n\r,]{2,20})/i),
+    income:findNum(/(?:הכנסה|שכר|משכורת)[^\d]*(\d[\d,]*)/i,/income[:\s]*([\d,]+)/i),
+    expense:findNum(/(?:הוצאה|הוצאות)[^\d]*(\d[\d,]*)/i,/expense[:\s]*([\d,]+)/i),
+    debts:[], savings:[], assets:[],
+  };
+}
+
+function showScanResult(result, fileName) {
+  const body = document.getElementById('modal-scan-body');
+  window._scanResult = result;
+
+  // מקרה של ריבוי לקוחות מקובץ Excel/CSV
+  if (result._multipleClients) {
+    const cl = result.clients;
+    body.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;padding:12px 16px;background:rgba(111,168,138,.08);border:1px solid #4C7863;border-radius:10px;">
+        <span>✅</span>
+        <div>
+          <p style="margin:0 0 2px;font-weight:600;font-size:14px;">נמצאו ${cl.length} לקוחות בקובץ</p>
+          <p style="margin:0;font-size:12.5px;color:#96A09C;">${fileName}</p>
+        </div>
+      </div>
+      <div style="max-height:280px;overflow-y:auto;border:1px solid #2A3338;border-radius:8px;margin-bottom:14px;">
+        ${cl.map((c,i)=>`<div style="display:flex;justify-content:space-between;padding:9px 12px;border-bottom:1px solid #2A3338;font-size:13px;">
+          <span style="font-weight:500;">${c.name}</span>
+          <span style="color:#96A09C;" class="mono">${c.income?'₪'+fmt(c.income):''}</span>
+        </div>`).join('')}
+      </div>
+      <p style="font-size:12.5px;color:#5E6A66;margin-bottom:14px;">כל הלקוחות יישמרו ישירות למערכת.</p>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-accent" onclick="importMultipleClients()">ייבוא כל ${cl.length} הלקוחות 💾</button>
+        <button class="btn btn-ghost" onclick="openScanFile()">סרוק קובץ אחר</button>
+        <button class="btn btn-ghost" onclick="closeModal('modal-scan')">ביטול</button>
+      </div>`;
+    return;
+  }
+
+  // לקוח בודד
+  const fields = [['שם',result.name],['גיל',result.age],['טלפון',result.phone],['עיר',result.city],
+    ['הכנסה חודשית',result.income?'₪'+fmt(result.income):null],
+    ['הוצאה חודשית',result.expense?'₪'+fmt(result.expense):null]
+  ].filter(([,v])=>v!=null);
+
+  body.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;padding:12px 16px;background:rgba(111,168,138,.08);border:1px solid #4C7863;border-radius:10px;">
+      <span>✅</span>
+      <div>
+        <p style="margin:0 0 2px;font-weight:600;font-size:14px;">הסריקה הושלמה</p>
+        <p style="margin:0;font-size:12.5px;color:#96A09C;">נתונים חולצו מ-${fileName}</p>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:14px;">
+      ${fields.map(([l,v])=>`<div style="background:#1F272B;border-radius:8px;padding:9px 12px;border:1px solid #2A3338;"><div style="font-size:11px;color:#5E6A66;margin-bottom:3px;">${l}</div><div style="font-size:13.5px;font-weight:500;">${v}</div></div>`).join('')}
+    </div>
+    ${(result.debts||[]).length>0?`<p style="font-size:12px;color:#96A09C;margin-bottom:6px;">חובות: ${result.debts.map(d=>d.name+' ₪'+fmt(d.balance)).join(', ')}</p>`:''}
+    ${(result.savings||[]).length>0?`<p style="font-size:12px;color:#96A09C;margin-bottom:6px;">חיסכון: ${result.savings.map(s=>s.type+' ₪'+fmt(s.amount)).join(', ')}</p>`:''}
+    <p style="font-size:12.5px;color:#5E6A66;margin-bottom:14px;">תוכל לערוך ולהשלים פרטים לפני השמירה.</p>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-accent" onclick="proceedWithScanResult()">המשך לעריכה ✏️</button>
+      <button class="btn btn-ghost" onclick="openScanFile()">סרוק קובץ אחר</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-scan')">ביטול</button>
+    </div>`;
+}
+
+async function importMultipleClients() {
+  const r = window._scanResult;
+  if (!r?._multipleClients) return;
+  const myAdvId = advisors.find(a=>a.name===currentUser.name)?.id||advisors[0]?.id||'';
+  const catId = categories[0]?.id||'';
+  const body = document.getElementById('modal-scan-body');
+  body.innerHTML = `<div style="text-align:center;padding:32px 0;">
+    <div class="spin" style="width:36px;height:36px;border:3px solid #2A3338;border-top-color:#6FA88A;border-radius:50%;margin:0 auto 14px;display:block;"></div>
+    <p style="font-size:14px;font-weight:600;">שומר ${r.clients.length} לקוחות…</p>
+  </div>`;
+  let saved = 0;
+  for (const c of r.clients) {
+    const data = {
+      name:c.name, age:c.age||0, phone:c.phone||'', notes:'יובא מקובץ',
+      city:c.city||'תל אביב', advisorId:myAdvId, categoryId:catId,
+      monthly:monthsBack(1).map(m=>({...m,income:c.income||0,expense:c.expense||0})),
+      debts:(c.debts||[]).map(d=>({id:uid(),...d})),
+      savings:(c.savings||[]).map(s=>({id:uid(),...s})),
+      assets:(c.assets||[]).map(a=>({id:uid(),...a})),
+      createdAt:Date.now(), updatedBy:currentUser.name,
+    };
+    await db.collection('clients').add(data);
+    saved++;
+  }
+  closeModal('modal-scan');
+  // הצג הודעת הצלחה
+  const panel = document.getElementById('main-panel');
+  if (panel) panel.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:60vh;flex-direction:column;gap:14px;">
+    <div style="font-size:48px;">✅</div>
+    <h2 style="font-family:'Frank Ruhl Libre',serif;font-size:20px;font-weight:700;">יובאו ${saved} לקוחות בהצלחה!</h2>
+    <p style="color:#96A09C;font-size:14px;">הלקוחות הוספו לרשימה ונשמרו במערכת</p>
+  </div>`;
+}
+
+function proceedWithScanResult() {
+  const r = window._scanResult;
+  if (!r) return;
+  const myAdvId = advisors.find(a=>a.name===currentUser.name)?.id||advisors[0]?.id||'';
+  const tempClient = {
+    id: null,
+    name: r.name||'לקוח חדש',
+    age: r.age||0,
+    phone: r.phone||'',
+    notes: 'יובא מסריקה',
+    city: r.city||'תל אביב',
+    advisorId: myAdvId,
+    categoryId: categories[0]?.id||'',
+    monthly: monthsBack(1).map(m=>({...m, income:r.income||0, expense:r.expense||0})),
+    debts: (r.debts||[]).map(d=>({id:uid(),...d})),
+    savings: (r.savings||[]).map(s=>({id:uid(),...s})),
+    assets: (r.assets||[]).map(a=>({id:uid(),...a})),
+  };
+
+  // סגור מודאל סריקה קודם, אז פתח טופס
+  document.getElementById('modal-scan').classList.add('hidden');
+  setTimeout(() => {
+    window._editingClientId = null;
+    document.getElementById('modal-client-title').textContent = 'הוספת לקוח — נתונים מסריקה';
+    document.getElementById('modal-client-body').innerHTML = buildClientForm(tempClient);
+    document.getElementById('modal-client').classList.remove('hidden');
+  }, 100);
+}
+
+// ═══════════════════════════════════
+// Messages
+// ═══════════════════════════════════
+function updateMsgBadge() {
+  const unread = messages.filter(m=>m.from!==currentUser.name).length;
+  const b = document.getElementById('msg-badge');
+  if (b) { b.textContent=unread; b.classList.toggle('hidden',unread===0); }
+}
+
+function updateMsgClientSelect() {
+  const sel = document.getElementById('msg-client-select');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">שיוך לתיק (אופציונלי)</option>' + clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+}
+
+function renderMessages() {
+  const list = document.getElementById('messages-list');
+  if (!list) return;
+  const cb = document.getElementById('msg-count-badge');
+  if (cb) { cb.textContent=messages.length; cb.classList.toggle('hidden',messages.length===0); }
+  if (messages.length===0) { list.innerHTML='<div style="color:#5E6A66;font-size:13px;text-align:center;padding:20px;">אין הודעות עדיין</div>'; return; }
+  list.innerHTML = messages.map(m => {
+    const mine = m.from===currentUser.name;
+    const cl = clients.find(c=>c.id===m.clientId);
+    return `<div style="display:flex;flex-direction:column;align-items:${mine?'flex-end':'flex-start'};gap:2px;">
+      <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:#5E6A66;">
+        ${!mine?`<span style="font-weight:600;color:${m.fromRole==='admin'?'#8B6FBB':'#6FA88A'};">${m.from}</span>`:''}
+        ${cl?`<span class="badge badge-default">תיק: ${cl.name}</span>`:''}
+        ${m.toAll?`<span class="badge badge-warn">לכולם</span>`:''}
+        <span>${fmtDate(m.ts)}</span>
+      </div>
+      <div style="max-width:75%;padding:8px 12px;border-radius:${mine?'11px 3px 11px 11px':'3px 11px 11px 11px'};background:${mine?'#4C7863':'#1F272B'};border:1px solid ${mine?'#4C7863':'#2A3338'};font-size:13.5px;line-height:1.5;">${m.text}</div>
+    </div>`;
+  }).join('');
+  list.scrollTop = list.scrollHeight;
+}
+
+async function sendMessage() {
+  const text = document.getElementById('msg-input').value.trim();
+  if (!text) return;
+  const clientId = document.getElementById('msg-client-select').value||null;
+  const toAll = document.getElementById('msg-toall').checked;
+  const client = clients.find(c=>c.id===clientId);
+
+  // שמור הודעה ב-Firestore
+  await db.collection('messages').add({
+    from: currentUser.name,
+    fromEmail: currentUser.email,
+    fromRole: currentUser.role,
+    clientId, text, ts: Date.now(), toAll
+  });
+
+  // שלח מייל לכל היועצים (אם toAll) או ליועץ האחראי על התיק
+  try {
+    const recipients = [];
+    if (toAll) {
+      // כל היועצים עם מייל
+      advisors.forEach(a => { if (a.email && a.email !== currentUser.email) recipients.push(a.email); });
+    } else if (client) {
+      const advOfClient = advisors.find(a => a.id === client.advisorId);
+      if (advOfClient?.email && advOfClient.email !== currentUser.email) recipients.push(advOfClient.email);
+    }
+
+    // שמור בקולקציית emailQueue — Firebase Extension יטפל בשליחה
+    for (const to of recipients) {
+      await db.collection('emailQueue').add({
+        to,
+        message: {
+          subject: `הודעה חדשה מ-${currentUser.name}${client ? ` — תיק ${client.name}` : ''}`,
+          html: `
+            <div dir="rtl" style="font-family:Arial,sans-serif;background:#f5f5f5;padding:20px;">
+              <div style="background:#1F272B;color:#E6E4DC;border-radius:12px;padding:24px;max-width:500px;margin:0 auto;">
+                <h2 style="color:#6FA88A;margin:0 0 16px;">📩 הודעה חדשה</h2>
+                <p style="margin:0 0 8px;"><strong>מאת:</strong> ${currentUser.name} (${currentUser.email})</p>
+                ${client ? `<p style="margin:0 0 8px;"><strong>תיק:</strong> ${client.name}</p>` : ''}
+                <div style="background:#2A3338;border-radius:8px;padding:16px;margin:16px 0;">
+                  <p style="margin:0;font-size:15px;line-height:1.6;">${text}</p>
+                </div>
+                <p style="margin:0;font-size:12px;color:#96A09C;">נשלח מלוח ייעוץ פיננסי · ${new Date().toLocaleDateString('he-IL')}</p>
+              </div>
+            </div>`,
+        },
+        createdAt: Date.now(),
+      });
+    }
+  } catch(e) {
+    console.log('Email notification error:', e.message);
+  }
+
+  document.getElementById('msg-input').value = '';
+  document.getElementById('msg-client-select').value = '';
+  document.getElementById('msg-toall').checked = false;
+}
+
+// ═══════════════════════════════════
+// Market
+// ═══════════════════════════════════
+// ═══════════════════════════════════
+// נדל"ן — הלמ"ס ורשות המסים
+// ═══════════════════════════════════
+let realestateCache = null;
+let realestateFetchTime = 0;
+
+async function fetchRealEstateData() {
+  const statusEl = document.getElementById('realestate-status');
+  if (statusEl) statusEl.textContent = 'טוען…';
+
+  if (realestateCache && Date.now() - realestateFetchTime < 60 * 60 * 1000) {
+    renderRealEstate(realestateCache);
+    return;
+  }
+
+  try {
+    // הנתונים מגיעים מאותה Netlify Function שמביאה גם מדדים
+    const res = await fetch('/api/market');
+    if (!res.ok) throw new Error('שגיאה');
+    const data = await res.json();
+
+    const result = {
+      indexVal:    data.housingIndex?.val    || null,
+      indexChange: data.housingIndex?.changePct || null,
+      indexDate:   data.housingIndex?.date   || null,
+      cityData:    data.cityPrices           || {},
+      error:       data.housingError         || null,
+    };
+
+    realestateCache = result;
+    realestateFetchTime = Date.now();
+    renderRealEstate(result);
+  } catch(e) {
+    renderRealEstate({ indexVal: null, cityData: {}, error: e.message });
+  }
+}
+
+function renderRealEstate(result) {
+  const statusEl = document.getElementById('realestate-status');
+  const indexEl  = document.getElementById('realestate-index');
+  const cityEl   = document.getElementById('city-table');
+
+  // מדד הלמ"ס
+  if (indexEl) {
+    if (result.indexVal) {
+      const up = parseFloat(result.indexChange) >= 0;
+      indexEl.innerHTML = `
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+          <div class="stat-card" style="min-width:160px;">
+            <div class="stat-label">מדד מחירי דירות (הלמ"ס)</div>
+            <div class="stat-value mono" style="color:#8B6FBB;">${result.indexVal?.toFixed(1)}</div>
+            <div style="font-size:11.5px;color:${up?'#B5483F':'#6FA88A'};margin-top:3px;">
+              ${up?'↑':'↓'} ${Math.abs(result.indexChange)}% מהתקופה הקודמת
+            </div>
+            ${result.indexDate ? `<div style="font-size:10.5px;color:#5E6A66;margin-top:2px;">תקופה: ${result.indexDate}</div>` : ''}
+          </div>
+          <div style="flex:1;min-width:200px;background:#1A2024;border-radius:9px;padding:12px;border:1px solid #2A3338;font-size:12.5px;color:#96A09C;line-height:1.7;">
+            <div style="font-weight:600;color:#E6E4DC;margin-bottom:5px;">על המדד</div>
+            מדד מחירי הדירות של הלמ"ס מתפרסם דו-חודשית ומשקף שינויי מחירים בניכוי איכות.
+            ${up ? '<div style="color:#C97B4A;margin-top:4px;">⚠️ עלייה במחירים — לקוחות עם נדל"ן רוכשים בסביבה יקרה יותר.</div>'
+                 : '<div style="color:#6FA88A;margin-top:4px;">✅ ירידה במחירים — הזדמנות פוטנציאלית לרוכשים.</div>'}
+          </div>
+        </div>`;
+      if (statusEl) { statusEl.textContent = '● חי'; statusEl.className = 'badge badge-accent'; }
+    } else {
+      indexEl.innerHTML = `<p style="font-size:13px;color:#5E6A66;">לא ניתן לטעון את מדד הלמ"ס כרגע. ${result.error||''}</p>`;
+      if (statusEl) { statusEl.textContent = 'לא זמין'; statusEl.className = 'badge badge-default'; }
+    }
+  }
+
+  // טבלת ערים
+  if (cityEl) {
+    const hasCityData = Object.keys(result.cityData||{}).length > 0;
+    if (hasCityData) {
+      const rows = Object.entries(result.cityData)
+        .sort((a,b) => b[1].avg - a[1].avg)
+        .map(([city, d]) => `
+          <tr style="border-top:1px solid #2A3338;">
+            <td style="padding:7px 8px;">${city}</td>
+            <td style="padding:7px 8px;" class="mono" style="color:#8B6FBB;">₪${fmt(d.avg)}</td>
+            <td style="padding:7px 8px;font-size:11px;color:#5E6A66;">${d.count} עסקאות</td>
+            <td style="padding:7px 8px;">
+              <div style="height:5px;background:#2A3338;border-radius:2px;width:100%;max-width:80px;">
+                <div style="height:5px;background:#8B6FBB;border-radius:2px;width:${Math.min(100,(d.avg/60000)*100)}%;"></div>
+              </div>
+            </td>
+          </tr>`).join('');
+      cityEl.innerHTML = `
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <tr style="color:#5E6A66;"><td style="padding:5px 8px;">עיר</td><td style="padding:5px 8px;">ממוצע מ"ר</td><td style="padding:5px 8px;">בסיס</td><td style="padding:5px 8px;"></td></tr>
+          ${rows}
+        </table>
+        <p style="font-size:11px;color:#5E6A66;margin-top:8px;">מקור: עסקאות נדל"ן — רשות המסים / data.gov.il · עדכון אחרון: ${new Date().toLocaleDateString('he-IL')}</p>`;
+    } else {
+      // fallback לנתוני הערכה
+      cityEl.innerHTML = `
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <tr style="color:#5E6A66;"><td style="padding:4px 8px;">עיר</td><td style="padding:4px 8px;">מחיר מ"ר (הערכה)</td></tr>
+          ${CITIES.map(c=>`<tr style="border-top:1px solid #2A3338;">
+            <td style="padding:6px 8px;">${c}</td>
+            <td style="padding:6px 8px;" class="mono" style="color:#8B6FBB;">₪${fmt(CITY_PRICES[c])}</td>
+          </tr>`).join('')}
+        </table>
+        <p style="font-size:11px;color:#5E6A66;margin-top:6px;">הערכות — לא נתוני API חיים</p>`;
+    }
+  }
+}
+// ═══════════════════════════════════
+// Dashboard
+// ═══════════════════════════════════
+function renderDashboard() {
+  const myClients = getMyClients();
+  const today = new Date(); today.setHours(0,0,0,0);
+  const tomorrow = new Date(today); tomorrow.setDate(today.getDate()+1);
+
+  // כותרת
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'בוקר טוב' : hour < 17 ? 'צהריים טובים' : 'ערב טוב';
+  const el = document.getElementById('dash-greeting');
+  if (el) el.textContent = `${greeting}, ${currentUser?.name}!`;
+  const dateEl = document.getElementById('dash-date');
+  if (dateEl) dateEl.textContent = new Date().toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
+  // סטטיסטיקות
+  const totalClients = myClients.length;
+  const critCount = myClients.reduce((s,c)=>s+analyzeClient(c).filter(i=>i.severity==='critical').length,0);
+  const todayMeetings = meetings.filter(m=>{const d=new Date(m.dateTime);d.setHours(0,0,0,0);return d.getTime()===today.getTime()&&m.status!=='בוטלה';}).length;
+  const totalAssets = myClients.reduce((s,c)=>s+(c.assets||[]).reduce((ss,a)=>ss+(a.value||0),0),0);
+
+  const statsEl = document.getElementById('dash-stats');
+  if (statsEl) statsEl.innerHTML = [
+    ['לקוחות פעילים', totalClients, '#6FA88A', '👥'],
+    ['התראות קריטיות', critCount, critCount>0?'#B5483F':'#6FA88A', '🔴'],
+    ['פגישות היום', todayMeetings, todayMeetings>0?'#C9A24A':'#96A09C', '📅'],
+    ['סך נכסים מנוהלים', '₪'+fmtM(totalAssets), '#8B6FBB', '💰'],
+  ].map(([l,v,col,icon])=>`
+    <div class="card" style="text-align:center;">
+      <div style="font-size:20px;margin-bottom:6px;">${icon}</div>
+      <div style="font-size:11px;color:#5E6A66;margin-bottom:4px;">${l}</div>
+      <div class="mono" style="font-size:18px;font-weight:700;color:${col};">${v}</div>
+    </div>`).join('');
+
+  // פגישות היום
+  const todayList = meetings.filter(m=>{const d=new Date(m.dateTime);d.setHours(0,0,0,0);return d.getTime()===today.getTime()&&m.status!=='בוטלה';}).sort((a,b)=>a.dateTime-b.dateTime);
+  const mtEl = document.getElementById('dash-meetings-today');
+  if (mtEl) mtEl.innerHTML = todayList.length === 0
+    ? `<p style="font-size:13px;color:#5E6A66;text-align:center;padding:12px;">אין פגישות היום</p>`
+    : todayList.map(m=>{
+        const cl = clients.find(c=>c.id===m.clientId);
+        const dt = new Date(m.dateTime);
+        return `<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #2A3338;cursor:pointer;" onclick="navTo('meetings')">
+          <div style="width:42px;height:42px;border-radius:8px;background:#1A2024;border:1px solid #364044;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;">
+            <span class="mono" style="font-size:14px;font-weight:700;">${dt.getHours()}:${String(dt.getMinutes()).padStart(2,'0')}</span>
+          </div>
+          <div>
+            <div style="font-size:13px;font-weight:500;">${m.title}</div>
+            ${cl?`<div style="font-size:11.5px;color:#5E6A66;">${cl.name}</div>`:''}
+          </div>
+        </div>`;
+      }).join('');
+
+  // התראות קריטיות
+  const critList = [];
+  myClients.forEach(c => {
+    analyzeClient(c).filter(i=>i.severity==='critical').forEach(iss => {
+      critList.push({ client: c, issue: iss });
+    });
+  });
+  const critEl = document.getElementById('dash-critical-list');
+  const critCount2El = document.getElementById('dash-crit-count');
+  if (critCount2El) { critCount2El.textContent=critList.length; critCount2El.classList.toggle('hidden',critList.length===0); }
+  if (critEl) critEl.innerHTML = critList.length === 0
+    ? `<p style="font-size:13px;color:#6FA88A;text-align:center;padding:12px;">✅ אין התראות קריטיות</p>`
+    : critList.slice(0,5).map(({client:c,issue:iss})=>`
+        <div style="display:flex;gap:8px;padding:7px 0;border-bottom:1px solid #2A3338;cursor:pointer;" onclick="selectClient('${c.id}');navTo('clients')">
+          <span style="flex-shrink:0;">🔴</span>
+          <div>
+            <div style="font-size:12.5px;font-weight:500;">${c.name}</div>
+            <div style="font-size:11.5px;color:#96A09C;">${iss.title}</div>
+          </div>
+        </div>`).join('') + (critList.length>5?`<p style="font-size:11.5px;color:#5E6A66;text-align:center;margin-top:6px;">ועוד ${critList.length-5}...</p>`:'');
+
+  // תיקים ללא מעקב (90+ יום)
+  const now90 = Date.now() - 90*24*60*60*1000;
+  const noFollowUp = myClients.filter(c => {
+    const lastMeeting = meetings.filter(m=>m.clientId===c.id&&m.status==='הושלמה').sort((a,b)=>b.dateTime-a.dateTime)[0];
+    const lastContact = lastMeeting ? lastMeeting.dateTime : (c.updatedAt||c.createdAt||0);
+    return lastContact < now90;
+  }).slice(0,5);
+  const fuEl = document.getElementById('dash-followup-list');
+  if (fuEl) fuEl.innerHTML = noFollowUp.length === 0
+    ? `<p style="font-size:13px;color:#6FA88A;text-align:center;padding:12px;">✅ כל הלקוחות עם מעקב תקין</p>`
+    : noFollowUp.map(c=>{
+        const lastMeeting = meetings.filter(m=>m.clientId===c.id&&m.status==='הושלמה').sort((a,b)=>b.dateTime-a.dateTime)[0];
+        const lastContact = lastMeeting ? lastMeeting.dateTime : (c.updatedAt||c.createdAt||0);
+        const daysAgo = Math.floor((Date.now()-lastContact)/(24*60*60*1000));
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #2A3338;cursor:pointer;" onclick="selectClient('${c.id}');navTo('clients')">
+          <span style="font-size:13px;">${c.name}</span>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <span style="font-size:11px;color:#C97B4A;">${daysAgo} ימים</span>
+            <button onclick="event.stopPropagation();openNewMeetingForClient('${c.id}')" style="font-size:11px;color:#6FA88A;border:1px solid #4C7863;background:transparent;padding:2px 7px;border-radius:5px;cursor:pointer;">+ פגישה</button>
+          </div>
+        </div>`;
+      }).join('');
+
+  // פעילות אחרונה
+  const actClientFilter = document.getElementById('dash-activity-client')?.value || '';
+  const actEl = document.getElementById('dash-activity-list');
+  const actList = buildActivityLog(actClientFilter);
+  if (actEl) actEl.innerHTML = actList.length === 0
+    ? `<p style="font-size:13px;color:#5E6A66;text-align:center;padding:12px;">אין פעילות אחרונה</p>`
+    : actList.slice(0,10).map(a=>`
+        <div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #2A3338;">
+          <div style="width:32px;height:32px;border-radius:8px;background:#1A2024;border:1px solid #2A3338;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">${a.icon}</div>
+          <div style="flex:1;">
+            <div style="font-size:13px;">${a.text}</div>
+            <div style="font-size:11px;color:#5E6A66;">${fmtTimeAgo(a.ts)}</div>
+          </div>
+        </div>`).join('');
+
+  // עדכון select לקוח
+  const actClientEl = document.getElementById('dash-activity-client');
+  if (actClientEl && actClientEl.options.length <= 1) {
+    myClients.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.id; opt.textContent = c.name;
+      actClientEl.appendChild(opt);
+    });
+  }
+}
+
+function getMyClients() {
+  const myAdvId = advisors.find(a=>a.uid===currentUser?.uid||a.email===currentUser?.email||a.name===currentUser?.name)?.id;
+  return clients.filter(c => c.advisorId === myAdvId || c.isShared === true);
+}
+
+function fmtM(n) {
+  if (!n) return '₪0';
+  if (n >= 1000000) return '₪' + (n/1000000).toFixed(1) + 'M';
+  if (n >= 1000) return '₪' + Math.round(n/1000) + 'K';
+  return '₪' + fmt(n);
+}
+
+function fmtTimeAgo(ts) {
+  if (!ts) return '';
+  const diff = Date.now() - ts;
+  const min = Math.floor(diff/60000);
+  const hr = Math.floor(diff/3600000);
+  const day = Math.floor(diff/86400000);
+  if (min < 1) return 'עכשיו';
+  if (min < 60) return `לפני ${min} דקות`;
+  if (hr < 24) return `לפני ${hr} שעות`;
+  if (day < 7) return `לפני ${day} ימים`;
+  return new Date(ts).toLocaleDateString('he-IL');
+}
+
+function buildActivityLog(clientFilter) {
+  const acts = [];
+  const myAdvId = advisors.find(a=>a.uid===currentUser?.uid||a.email===currentUser?.email||a.name===currentUser?.name)?.id;
+
+  clients.filter(c=>c.advisorId===myAdvId).forEach(c => {
+    if (clientFilter && c.id !== clientFilter) return;
+    if (c.createdAt) acts.push({ ts:c.createdAt, icon:'➕', text:`לקוח חדש נוסף: ${c.name}`, clientId:c.id });
+    if (c.updatedAt && c.updatedAt !== c.createdAt) acts.push({ ts:c.updatedAt, icon:'✏️', text:`תיק עודכן: ${c.name} (${c.updatedBy||'יועץ'})`, clientId:c.id });
+  });
+
+  meetings.filter(m=>!clientFilter||m.clientId===clientFilter).forEach(m => {
+    const cl = clients.find(c=>c.id===m.clientId);
+    if (m.status === 'הושלמה') acts.push({ ts:m.updatedAt||m.dateTime, icon:'✅', text:`פגישה הושלמה: ${m.title}${cl?` עם ${cl.name}`:''}`, clientId:m.clientId });
+    else if (m.createdAt) acts.push({ ts:m.createdAt, icon:'📅', text:`פגישה נקבעה: ${m.title}${cl?` עם ${cl.name}`:''}`, clientId:m.clientId });
+  });
+
+  return acts.sort((a,b)=>b.ts-a.ts);
+}
+
+function openNewMeetingForClient(clientId) {
+  openNewMeeting();
+  setTimeout(()=>{ const sel = document.getElementById('mt-client'); if(sel) sel.value=clientId; }, 100);
+}
+
+// ═══════════════════════════════════
+// Global Search
+// ═══════════════════════════════════
+function globalSearch(q) {
+  const results = document.getElementById('dash-search-results');
+  if (!results) return;
+  if (!q || q.length < 2) { results.style.display='none'; return; }
+  const ql = q.toLowerCase();
+  const found = clients.filter(c =>
+    c.name?.toLowerCase().includes(ql) ||
+    c.phone?.includes(q) ||
+    c.city?.toLowerCase().includes(ql) ||
+    (c.debts||[]).some(d=>d.name?.toLowerCase().includes(ql))
+  ).slice(0,8);
+  if (found.length === 0) { results.style.display='none'; return; }
+  results.innerHTML = found.map(c=>{
+    const iss = analyzeClient(c).filter(i=>i.severity==='critical').length;
+    const last = (c.monthly||[]).slice(-1)[0]||{};
+    return `<div onclick="selectClient('${c.id}');navTo('clients');document.getElementById('dash-search').value='';document.getElementById('dash-search-results').style.display='none';" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #2A3338;display:flex;justify-content:space-between;align-items:center;" onmouseover="this.style.background='#242D32'" onmouseout="this.style.background=''">
+      <div>
+        <div style="font-size:13.5px;font-weight:500;">${c.name}</div>
+        <div style="font-size:11.5px;color:#5E6A66;">${c.city||''} ${c.phone?'· '+c.phone:''}</div>
+      </div>
+      <div style="text-align:left;">
+        ${last.income?`<div class="mono" style="font-size:11.5px;color:#6FA88A;">₪${fmt(last.income)}</div>`:''}
+        ${iss>0?`<div style="font-size:10.5px;color:#B5483F;">${iss} התראות</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+  results.style.display = 'block';
+}
+
+document.addEventListener('click', e => {
+  const wrap = document.getElementById('dash-global-search-wrap');
+  if (wrap && !wrap.contains(e.target)) {
+    const r = document.getElementById('dash-search-results');
+    if (r) r.style.display = 'none';
+  }
+});
+
+// ═══════════════════════════════════
+// Smart Notifications
+// ═══════════════════════════════════
+let notificationsShown = new Set();
+
+function checkNotifications() {
+  const now = new Date();
+  const in60 = now.getTime() + 60*60*1000;
+  const in30 = now.getTime() + 30*60*1000;
+
+  // פגישות קרובות
+  meetings.forEach(m => {
+    if (m.status === 'בוטלה' || m.status === 'הושלמה') return;
+    const dt = new Date(m.dateTime).getTime();
+    const key60 = `meet-60-${m.id}`;
+    const key30 = `meet-30-${m.id}`;
+    if (dt <= in60 && dt > in30 && !notificationsShown.has(key60)) {
+      notificationsShown.add(key60);
+      showNotification('📅', `פגישה בעוד שעה: ${m.title}`, () => navTo('meetings'));
+    }
+    if (dt <= in30 && dt > now.getTime() && !notificationsShown.has(key30)) {
+      notificationsShown.add(key30);
+      showNotification('⏰', `פגישה בעוד 30 דקות: ${m.title}`, () => navTo('meetings'));
+    }
+  });
+
+  // DSTI גבוה
+  const myAdvId = advisors.find(a=>a.uid===currentUser?.uid||a.email===currentUser?.email||a.name===currentUser?.name)?.id;
+  clients.filter(c=>c.advisorId===myAdvId).forEach(c => {
+    const last = (c.monthly||[]).slice(-1)[0]||{};
+    const dM = (c.debts||[]).reduce((s,d)=>s+(d.monthlyPayment||0),0);
+    if (last.income > 0 && dM/last.income > 0.4) {
+      const key = `dsti-${c.id}`;
+      if (!notificationsShown.has(key)) {
+        notificationsShown.add(key);
+        showNotification('🔴', `DSTI גבוה: ${c.name} — ${((dM/last.income)*100).toFixed(0)}%`, () => { selectClient(c.id); navTo('clients'); });
+      }
+    }
+  });
+}
+
+let notifQueue = [];
+let notifShowing = false;
+
+function showNotification(icon, text, onClick) {
+  notifQueue.push({icon, text, onClick});
+  if (!notifShowing) processNotifQueue();
+}
+
+function processNotifQueue() {
+  if (notifQueue.length === 0) { notifShowing = false; return; }
+  notifShowing = true;
+  const {icon, text, onClick} = notifQueue.shift();
+  const el = document.createElement('div');
+  el.style.cssText = `position:fixed;bottom:24px;left:24px;background:#1F272B;border:1px solid #364044;border-radius:12px;padding:12px 16px;display:flex;gap:10px;align-items:center;z-index:999;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.4);animation:slideIn .3s ease;max-width:320px;`;
+  el.innerHTML = `<span style="font-size:20px;">${icon}</span><div><div style="font-size:13px;font-weight:600;color:#E6E4DC;">${text}</div><div style="font-size:11px;color:#5E6A66;margin-top:2px;">לחץ לפרטים</div></div><button onclick="event.stopPropagation();this.closest('div').remove();processNotifQueue();" style="margin-right:auto;color:#5E6A66;font-size:16px;padding:0 4px;">✕</button>`;
+  el.onclick = () => { onClick?.(); el.remove(); setTimeout(processNotifQueue, 300); };
+  document.body.appendChild(el);
+  setTimeout(() => { el.remove(); setTimeout(processNotifQueue, 300); }, 6000);
+}
+
+// הוסף CSS לאנימציה
+const notifStyle = document.createElement('style');
+notifStyle.textContent = `@keyframes slideIn{from{transform:translateX(-100%);opacity:0;}to{transform:translateX(0);opacity:1;}}`;
+document.head.appendChild(notifStyle);
+
+// בדיקה כל 5 דקות
+setInterval(checkNotifications, 5*60*1000);
+
+// ═══════════════════════════════════
+// Meeting Templates
+// ═══════════════════════════════════
+const MEETING_TEMPLATES = {
+  'ייעוץ ראשוני': { duration:90, notes:'מטרות פגישה:\n• הכרת המצב הפיננסי\n• זיהוי יעדים\n• הצגת שירותים\n\nמסמכים לבקש:\n• תלושי שכר\n• הסכמי הלוואה\n• דפי חשבון' },
+  'מעקב רבעוני': { duration:45, notes:'נושאים לסקירה:\n• עדכון הכנסות/הוצאות\n• התקדמות בהחזר חובות\n• עדכון חיסכון\n• שינויים במצב משפחתי' },
+  'תכנון פרישה': { duration:60, notes:'נושאים:\n• גיל פרישה מבוקש\n• הכנסה צפויה בפרישה\n• פנסיה ותגמולים\n• חיסכון נוסף נדרש' },
+  'סגירת הלוואה': { duration:30, notes:'לבדוק:\n• תנאי סגירה מוקדמת\n• עמלות\n• חלופות מימון\n• השפעה על תזרים' },
+};
+
+// ═══════════════════════════════════
+// Meetings (עדכון buildMeetingForm עם תבניות)
+// ═══════════════════════════════════
+let meetings = [];
+let meetingFilter = 'all';
+let unsubMeetings = null;
+
+function setMeetingFilter(f) {
+  meetingFilter = f;
+  ['all','upcoming','today','past'].forEach(t => {
+    const b = document.getElementById('mf-'+t);
+    if (!b) return;
+    const active = t === f;
+    b.style.background = active ? '#6FA88A' : '';
+    b.style.color = active ? '#0E1413' : '';
+    b.style.borderColor = active ? '#6FA88A' : '';
+    if (!active) { b.className = 'btn btn-sm btn-ghost'; }
+  });
+  renderMeetings();
+}
+
+function getFilteredMeetings() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate()+1);
+  const clientFilter = document.getElementById('meetings-client-filter')?.value || '';
+  let list = [...meetings];
+
+  // יועץ רואה רק פגישות שלו
+  if (currentUser?.role !== 'admin') {
+    list = list.filter(m => m.advisorName === currentUser?.name || m.createdBy === currentUser?.name);
+  }
+  if (clientFilter) list = list.filter(m => m.clientId === clientFilter);
+
+  if (meetingFilter === 'today') list = list.filter(m => { const d=new Date(m.dateTime); d.setHours(0,0,0,0); return d.getTime()===today.getTime(); });
+  else if (meetingFilter === 'upcoming') list = list.filter(m => new Date(m.dateTime) >= today);
+  else if (meetingFilter === 'past') list = list.filter(m => new Date(m.dateTime) < today);
+
+  return list.sort((a,b) => {
+    if (meetingFilter === 'past') return new Date(b.dateTime) - new Date(a.dateTime);
+    return new Date(a.dateTime) - new Date(b.dateTime);
+  });
+}
+
+function renderMeetings() {
+  const list = document.getElementById('meetings-list');
+  if (!list) return;
+  const filtered = getFilteredMeetings();
+  updateMeetingsBadge();
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div style="text-align:center;padding:48px;color:#5E6A66;">
+      <div style="font-size:36px;margin-bottom:12px;">📅</div>
+      <p style="font-size:14px;">אין פגישות ${meetingFilter==='today'?'היום':meetingFilter==='upcoming'?'קרובות':meetingFilter==='past'?'בעבר':''}</p>
+      <button class="btn btn-accent" onclick="openNewMeeting()" style="margin-top:12px;">+ פגישה חדשה</button>
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(m => {
+    const client = clients.find(c=>c.id===m.clientId);
+    const dt = new Date(m.dateTime);
+    const isPast = dt < new Date();
+    const isToday = (() => { const t=new Date(); return dt.getDate()===t.getDate()&&dt.getMonth()===t.getMonth()&&dt.getFullYear()===t.getFullYear(); })();
+    const statusColor = m.status==='הושלמה'?'#6FA88A':m.status==='בוטלה'?'#B5483F':isToday?'#C9A24A':'#5B8FA8';
+    const statusBg = m.status==='הושלמה'?'rgba(111,168,138,.12)':m.status==='בוטלה'?'rgba(181,72,63,.12)':isToday?'rgba(201,154,74,.12)':'rgba(91,143,168,.12)';
+
+    return `<div class="card fi" style="border-color:${isPast&&m.status!=='הושלמה'?'#2A3338':'#364044'};">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
+        <div style="flex:1;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+            <span style="font-size:15px;font-weight:600;">${m.title||'פגישה'}</span>
+            <span style="font-size:11.5px;padding:2px 9px;border-radius:100px;background:${statusBg};color:${statusColor};border:1px solid ${statusColor}40;">${m.status||'מתוכננת'}${isToday?' · היום':''}</span>
+          </div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12.5px;color:#96A09C;">
+            <span>📅 ${dt.toLocaleDateString('he-IL',{weekday:'short',day:'2-digit',month:'2-digit',year:'2-digit'})}</span>
+            <span>🕐 ${dt.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'})}</span>
+            ${m.duration?`<span>⏱ ${m.duration} דק'</span>`:''}
+            ${client?`<span>👤 ${client.name}</span>`:''}
+            ${m.location?`<span>📍 ${m.location}</span>`:''}
+          </div>
+          ${m.notes?`<p style="font-size:12.5px;color:#5E6A66;margin:7px 0 0;line-height:1.5;">${m.notes}</p>`:''}
+          ${m.summary?`<div style="margin-top:8px;padding:8px 12px;background:rgba(111,168,138,.07);border-radius:7px;border:1px solid #4C7863;font-size:12.5px;color:#96A09C;line-height:1.6;"><strong style="color:#6FA88A;">סיכום:</strong> ${m.summary}</div>`:''}
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="btn btn-sm" onclick="openEditMeeting('${m.id}')">✏️</button>
+          ${m.status!=='הושלמה'?`<button class="btn btn-sm" onclick="completeMeeting('${m.id}')" style="color:#6FA88A;border-color:#4C7863;">✅ סיים</button>`:''}
+          <button class="btn btn-crit btn-sm" onclick="deleteMeeting('${m.id}')">🗑</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateMeetingsBadge() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate()+1);
+  const todayCount = meetings.filter(m => {
+    const d = new Date(m.dateTime); d.setHours(0,0,0,0);
+    return d.getTime()===today.getTime() && m.status!=='הושלמה' && m.status!=='בוטלה';
+  }).length;
+  const b = document.getElementById('meetings-badge');
+  if (b) { b.textContent=todayCount; b.classList.toggle('hidden',todayCount===0); }
+}
+
+function updateMeetingsClientSelect() {
+  const sel = document.getElementById('meetings-client-filter');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">כל הלקוחות</option>' + clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+}
+
+function openNewMeeting() {
+  document.getElementById('modal-meeting-title').textContent = 'פגישה חדשה';
+  document.getElementById('modal-meeting-body').innerHTML = buildMeetingForm(null);
+  document.getElementById('modal-meeting').classList.remove('hidden');
+}
+
+function openEditMeeting(id) {
+  const m = meetings.find(x=>x.id===id);
+  if (!m) return;
+  document.getElementById('modal-meeting-title').textContent = 'עריכת פגישה';
+  document.getElementById('modal-meeting-body').innerHTML = buildMeetingForm(m);
+  document.getElementById('modal-meeting').classList.remove('hidden');
+}
+
+function buildMeetingForm(m) {
+  const now = new Date();
+  const defaultDate = m ? new Date(m.dateTime) : new Date(now.getTime() + 24*60*60*1000);
+  const pad = n => String(n).padStart(2,'0');
+  const dateStr = `${defaultDate.getFullYear()}-${pad(defaultDate.getMonth()+1)}-${pad(defaultDate.getDate())}`;
+  const timeStr = `${pad(defaultDate.getHours())}:${pad(defaultDate.getMinutes())}`;
+
+  return `<div style="display:flex;flex-direction:column;gap:11px;">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:2px;">
+      <span style="font-size:12px;color:#5E6A66;align-self:center;">תבנית:</span>
+      ${Object.keys(MEETING_TEMPLATES).map(t=>`<button type="button" onclick="applyMeetingTemplate('${t}')" style="font-size:11.5px;padding:3px 10px;border-radius:6px;background:#1A2024;border:1px solid #2A3338;color:#96A09C;cursor:pointer;">${t}</button>`).join('')}
+    </div>
+    <div><label class="form-label">כותרת הפגישה *</label><input type="text" id="mt-title" value="${m?.title||''}" placeholder="פגישת ייעוץ ראשונית"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;">
+      <div><label class="form-label">תאריך</label><input type="date" id="mt-date" value="${dateStr}"></div>
+      <div><label class="form-label">שעה</label><input type="time" id="mt-time" value="${timeStr}"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;">
+      <div><label class="form-label">משך (דקות)</label><input type="number" id="mt-duration" value="${m?.duration||60}" placeholder="60"></div>
+      <div><label class="form-label">סטטוס</label>
+        <select id="mt-status">
+          ${['מתוכננת','אושרה','הושלמה','בוטלה'].map(s=>`<option${(m?.status||'מתוכננת')===s?' selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div><label class="form-label">לקוח</label>
+      <select id="mt-client">
+        <option value="">ללא שיוך לקוח</option>
+        ${clients.map(c=>`<option value="${c.id}"${m?.clientId===c.id?' selected':''}>${c.name}</option>`).join('')}
+      </select>
+    </div>
+    <div><label class="form-label">מיקום / ערוץ</label><input type="text" id="mt-location" value="${m?.location||''}" placeholder="זום / משרד / טלפון"></div>
+    <div><label class="form-label">הערות</label><textarea id="mt-notes" rows="2" placeholder="נושאים לדיון, הכנה נדרשת..." style="resize:vertical;">${m?.notes||''}</textarea></div>
+    <div><label class="form-label">סיכום פגישה</label><textarea id="mt-summary" rows="3" placeholder="מה הוחלט, משימות, נושאים להמשך..." style="resize:vertical;">${m?.summary||''}</textarea></div>
+    <div style="display:flex;gap:9px;margin-top:6px;">
+      <button class="btn btn-accent" onclick="saveMeetingForm('${m?.id||''}')">שמור פגישה</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-meeting')">ביטול</button>
+    </div>
+  </div>`;
+}
+
+function applyMeetingTemplate(name) {
+  const t = MEETING_TEMPLATES[name];
+  if (!t) return;
+  const titleEl = document.getElementById('mt-title');
+  const durEl = document.getElementById('mt-duration');
+  const notesEl = document.getElementById('mt-notes');
+  if (titleEl && !titleEl.value) titleEl.value = name;
+  if (durEl) durEl.value = t.duration;
+  if (notesEl) notesEl.value = t.notes;
+}
+
+async function saveMeetingForm(existingId) {
+  const title = document.getElementById('mt-title').value.trim();
+  if (!title) { alert('נא להזין כותרת'); return; }
+  const date = document.getElementById('mt-date').value;
+  const time = document.getElementById('mt-time').value;
+  const dateTime = new Date(`${date}T${time}`).getTime();
+
+  const data = {
+    title,
+    dateTime,
+    duration: parseInt(document.getElementById('mt-duration').value)||60,
+    status: document.getElementById('mt-status').value,
+    clientId: document.getElementById('mt-client').value||null,
+    location: document.getElementById('mt-location').value.trim(),
+    notes: document.getElementById('mt-notes').value.trim(),
+    summary: document.getElementById('mt-summary').value.trim(),
+    advisorName: currentUser.name,
+    updatedAt: Date.now(),
+  };
+
+  if (existingId) {
+    await db.collection('meetings').doc(existingId).update(data);
+  } else {
+    data.createdBy = currentUser.name;
+    data.createdAt = Date.now();
+    await db.collection('meetings').add(data);
+  }
+  closeModal('modal-meeting');
+}
+
+async function completeMeeting(id) {
+  await db.collection('meetings').doc(id).update({ status:'הושלמה', updatedAt:Date.now() });
+}
+
+async function deleteMeeting(id) {
+  if (!confirm('למחוק את הפגישה?')) return;
+  await db.collection('meetings').doc(id).delete();
+}
+
+// ═══════════════════════════════════
+// Gemini Chat
+// ═══════════════════════════════════
+let geminiHistory = [];
+let geminiClientId = null;
+
+function updateGeminiContext() {
+  geminiClientId = document.getElementById('gemini-client-ctx').value || null;
+}
+
+function updateGeminiClientSelect() {
+  const sel = document.getElementById('gemini-client-ctx');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">ללא הקשר לקוח</option>' +
+    clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  if (selectedClientId) sel.value = selectedClientId;
+}
+
+function clearGeminiChat() {
+  geminiHistory = [];
+  const msgs = document.getElementById('gemini-messages');
+  if (msgs) msgs.innerHTML = `<div style="text-align:center;padding:32px 16px;color:#5E6A66;font-size:13px;">הצ'אט נוקה. שאל שאלה חדשה.</div>`;
+}
+
+function buildGeminiSystemPrompt() {
+  let sys = `אתה יועץ פיננסי מקצועי דובר עברית. אתה עוזר ליועצים פיננסיים לנתח מצב לקוחות ולתת המלצות מבוססות נתונים. ענה תמיד בעברית, בצורה מקצועית וברורה.`;
+
+  // הוסף נתוני שוק אם קיימים
+  if (marketCache) {
+    const m = marketCache;
+    const parts = [];
+    if (m.usd) parts.push(`דולר/שקל: ${parseFloat(m.usd.val).toFixed(3)}`);
+    if (m.eur) parts.push(`אירו/שקל: ${parseFloat(m.eur.val).toFixed(3)}`);
+    if (m.ta125) parts.push(`ת"א 125: ${Math.round(parseFloat(m.ta125.val))}`);
+    if (m.sp500) parts.push(`S&P 500: ${Math.round(parseFloat(m.sp500.val))}`);
+    if (m.ndx) parts.push(`נאסד"ק 100: ${Math.round(parseFloat(m.ndx.val))}`);
+    if (m.gold) parts.push(`זהב: $${Math.round(parseFloat(m.gold.val))}`);
+    if (parts.length > 0) {
+      sys += `\n\nנתוני שוק בזמן אמת (${m.lastUpdated||'עדכני'}): ${parts.join(', ')}.`;
+    }
+    if (realestateCache?.indexVal) {
+      sys += ` מדד מחירי דירות (הלמ"ס): ${realestateCache.indexVal.toFixed(1)} (${realestateCache.indexChange>0?'+':''}${realestateCache.indexChange}% מהתקופה הקודמת).`;
+    }
+  }
+
+  const client = geminiClientId ? clients.find(c=>c.id===geminiClientId) : (selectedClientId ? clients.find(c=>c.id===selectedClientId) : null);
+  if (client) {
+    const last = (client.monthly||[]).slice(-1)[0]||{};
+    const dT=(client.debts||[]).reduce((s,d)=>s+(d.balance||0),0);
+    const dM=(client.debts||[]).reduce((s,d)=>s+(d.monthlyPayment||0),0);
+    const sT=(client.savings||[]).reduce((s,x)=>s+(x.amount||0),0);
+    const aT=(client.assets||[]).reduce((s,a)=>s+(a.value||0),0);
+    const iss=analyzeClient(client);
+    sys += `\n\nנתוני הלקוח: שם: ${client.name}, גיל: ${client.age||'?'}, הכנסה: ₪${fmt(last.income)}, הוצאה: ₪${fmt(last.expense)}, עודף: ₪${fmt((last.income||0)-(last.expense||0))}, חובות: ₪${fmt(dT)}, החזר חודשי: ₪${fmt(dM)}, DSTI: ${last.income>0?((dM/last.income)*100).toFixed(1)+'%':'?'}, חיסכון: ₪${fmt(sT)}, נכסים: ₪${fmt(aT)}, הון נטו: ₪${fmt(aT+sT-dT)}.
+חובות: ${(client.debts||[]).map(d=>`${d.name} ₪${fmt(d.balance)} ריבית ${d.interestRate}%`).join('; ')||'אין'}.
+בעיות: ${iss.map(i=>i.title).join(', ')||'לא זוהו'}.`;
+  }
+  return sys;
+}
+
+async function sendGeminiMsgWithMarket(preset) {
+  // ודא שנתוני שוק טעונים
+  if (!marketCache) {
+    try { await fetchMarketData(); } catch(e) {}
+  }
+  sendGeminiMsg(preset);
+}
+
+async function sendGeminiMsg(preset) {
+  const input = document.getElementById('gemini-input');
+  const text = preset || input?.value?.trim();
+  if (!text) return;
+  if (input) input.value = '';
+  const welcome = document.getElementById('gemini-welcome');
+  if (welcome) welcome.style.display = 'none';
+  const msgs = document.getElementById('gemini-messages');
+  const btn = document.getElementById('gemini-send-btn');
+  msgs.innerHTML += `<div style="display:flex;justify-content:flex-end;"><div style="max-width:75%;padding:9px 13px;border-radius:12px 3px 12px 12px;background:#4C7863;font-size:13.5px;line-height:1.55;">${text}</div></div>`;
+  msgs.scrollTop = msgs.scrollHeight;
+  const loadId = 'gl-' + Date.now();
+  msgs.innerHTML += `<div id="${loadId}" style="padding:12px;color:#5E6A66;font-size:13px;">✨ מעבד...</div>`;
+  if (btn) btn.disabled = true;
+  geminiHistory.push({ role:'user', parts:[{text}] });
+  try {
+    const res = await fetch('/api/gemini', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        systemPrompt: buildGeminiSystemPrompt(),
+        messages: geminiHistory,
+      })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    const reply = data.reply || 'לא הצלחתי לקבל תשובה.';
+    geminiHistory.push({ role:'model', parts:[{text:reply}] });
+    document.getElementById(loadId)?.remove();
+    const formatted = reply.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
+    msgs.innerHTML += `<div style="display:flex;gap:9px;align-items:flex-start;">
+      <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#4285F4,#9B6DFF);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">✨</div>
+      <div style="max-width:80%;padding:9px 13px;border-radius:3px 12px 12px 12px;background:#1F272B;border:1px solid #2A3338;font-size:13.5px;line-height:1.65;">${formatted}</div>
+    </div>`;
+    msgs.scrollTop = msgs.scrollHeight;
+  } catch(e) {
+    document.getElementById(loadId)?.remove();
+    msgs.innerHTML += `<div style="color:#B5483F;font-size:13px;padding:9px;">שגיאה: ${e.message}</div>`;
+  }
+  if (btn) btn.disabled = false;
+}
+
+// ═══════════════════════════════════
+// Market Data
+// ═══════════════════════════════════
+let marketCache = null;
+let marketLastFetch = 0;
+
+async function fetchMarketData() {
+  if (marketCache && Date.now() - marketLastFetch < 5 * 60 * 1000) return marketCache;
+  const res = await fetch('/api/market');
+  if (!res.ok) throw new Error('שגיאה בטעינת נתוני שוק');
+  const data = await res.json();
+  const results = {
+    usd:   data.usd   || null,
+    eur:   data.eur   || null,
+    ta125: data.ta125 || null,
+    sp500: data.sp500 || null,
+    ndx:   data.ndx   || null,
+    gold:  data.gold  || null,
+    lastUpdated: data.fetchedAt ? new Date(data.fetchedAt).toLocaleTimeString('he-IL') : null,
+    errors: [],
+  };
+  marketCache = results;
+  marketLastFetch = Date.now();
+  return results;
+}
+
+async function renderMarket() {
+  const cards = document.getElementById('market-cards');
+  const ct = document.getElementById('market-table');
+  const ct2 = document.getElementById('city-table');
+
+  // הצג skeleton בזמן טעינה
+  if (cards) cards.innerHTML = `
+    <div class="card" style="grid-column:1/-1;text-align:center;padding:24px;color:#5E6A66;">
+      <div class="spin" style="width:28px;height:28px;border:2.5px solid #2A3338;border-top-color:#6FA88A;border-radius:50%;margin:0 auto 10px;display:block;"></div>
+      <div style="font-size:13px;">טוען נתונים בזמן אמת…</div>
+    </div>`;
+
+  let d;
+  try { d = await fetchMarketData(); }
+  catch(e) { d = { errors: [e.message] }; }
+
+  const chgPct = (v, p) => p ? (((v - p) / p) * 100).toFixed(2) : null;
+  const chgHtml = (v, p) => {
+    const c = chgPct(v, p);
+    if (c === null) return '';
+    const up = parseFloat(c) >= 0;
+    return `<div style="font-size:11.5px;color:${up?'#6FA88A':'#B5483F'};margin-top:3px;">${up?'↑':'↓'} ${Math.abs(c)}%</div>`;
+  };
+
+  const allCards = [];
+
+  if (d.usd)   allCards.push({ label:'דולר / ש״ח',   val:d.usd.val?.toFixed(3),  prev:d.usd.prev,  color:'#5B8FA8', live:true });
+  if (d.eur)   allCards.push({ label:'אירו / ש״ח',   val:d.eur.val?.toFixed(3),  prev:d.eur.prev,  color:'#8B6FBB', live:true });
+  if (d.ta125) allCards.push({ label:d.ta125.label,  val:Math.round(d.ta125.val)?.toLocaleString('he-IL'), prev:d.ta125.prev, valRaw:d.ta125.val, color:d.ta125.color, live:true });
+  if (d.sp500) allCards.push({ label:d.sp500.label,  val:Math.round(d.sp500.val)?.toLocaleString('he-IL'), prev:d.sp500.prev, valRaw:d.sp500.val, color:d.sp500.color, live:true });
+  if (d.ndx)   allCards.push({ label:d.ndx.label,    val:Math.round(d.ndx.val)?.toLocaleString('he-IL'),   prev:d.ndx.prev,   valRaw:d.ndx.val,   color:d.ndx.color,   live:true });
+  if (d.gold)  allCards.push({ label:d.gold.label,   val:'$'+Math.round(d.gold.val)?.toLocaleString('he-IL'), prev:d.gold.prev, valRaw:d.gold.val, color:d.gold.color, live:true });
+
+  // fallback אם הכל נכשל
+  if (allCards.length === 0) {
+    allCards.push(
+      { label:'דולר / ש״ח', val:'3.71', color:'#5B8FA8', live:false },
+      { label:'ת״א 125', val:'2,187', color:'#6FA88A', live:false },
+      { label:'S&P 500', val:'5,243', color:'#C9A24A', live:false },
+    );
+  }
+
+  if (cards) cards.innerHTML = allCards.map(m => `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <div style="font-size:12px;color:#96A09C;">${m.label}</div>
+        ${m.live ? '<div style="width:6px;height:6px;border-radius:50%;background:#6FA88A;" title="נתון חי"></div>' : '<div style="width:6px;height:6px;border-radius:50%;background:#5E6A66;" title="נתון לדוגמה"></div>'}
+      </div>
+      <div class="mono" style="font-size:19px;font-weight:600;color:${m.color};">${m.val}</div>
+      ${m.prev && m.valRaw ? chgHtml(m.valRaw, m.prev) : m.prev ? chgHtml(parseFloat(m.val), m.prev) : ''}
+    </div>`).join('');
+
+  if (ct) ct.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <span style="font-size:12px;font-weight:600;">מדדים ושערי חליפין</span>
+      ${d.lastUpdated ? `<span style="font-size:11px;color:#5E6A66;">עודכן: ${d.lastUpdated} <button onclick="marketCache=null;renderMarket()" style="color:#6FA88A;font-size:11px;margin-right:6px;cursor:pointer;">↻ רענון</button></span>` : ''}
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      ${allCards.map(m=>{
+        const c = m.prev && m.valRaw ? chgPct(m.valRaw, m.prev) : null;
+        const up = c ? parseFloat(c) >= 0 : null;
+        return `<tr style="border-bottom:1px solid #2A3338;">
+          <td style="padding:8px 0;color:#96A09C;">${m.label}</td>
+          <td style="padding:8px 0;" class="mono" style="color:${m.color};">${m.val}</td>
+          <td style="padding:8px 0;color:${up===null?'#5E6A66':up?'#6FA88A':'#B5483F'};">${c!==null?(up?'+':'')+c+'%':'—'}</td>
+          <td style="padding:8px 0;">${m.live?'<span style="font-size:10px;color:#6FA88A;">● חי</span>':'<span style="font-size:10px;color:#5E6A66;">דוגמה</span>'}</td>
+        </tr>`;
+      }).join('')}
+    </table>
+    ${d.errors?.length ? `<p style="font-size:11px;color:#5E6A66;margin-top:8px;">⚠️ חלק מהנתונים לא נטענו: ${d.errors.join(', ')}</p>` : ''}`;
+
+  if (ct2) ct2.innerHTML = `<div style="font-size:12.5px;color:#5E6A66;padding:8px 0;">טוען נתוני נדל"ן מהלמ"ס…</div>`;
+}
+
+// ═══════════════════════════════════
+// Admin
+// ═══════════════════════════════════
+function adminTab(tab) {
+  adminCurrentTab = tab;
+  ['overview','advisors','categories','all'].forEach(t => {
+    const b = document.getElementById('atab-'+t);
+    if(b){b.style.background=t===tab?'#8B6FBB':'';b.style.color=t===tab?'#fff':'';b.style.borderColor=t===tab?'#5E4A80':'';}
+  });
+  renderAdmin();
+}
+
+function renderAdmin() {
+  const c = document.getElementById('admin-content');
+  if (!c) return;
+  const totCrit = clients.reduce((s,cl)=>s+analyzeClient(cl).filter(i=>i.severity==="critical").length,0);
+
+  if (adminCurrentTab==='overview') {
+    c.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:20px;">
+        ${[['סך לקוחות',clients.length,'#6FA88A'],['יועצים',advisors.length,'#8B6FBB'],['התראות קריטיות',totCrit,'#B5483F'],['קטגוריות',categories.length,'#C9A24A']].map(([l,v,col])=>`
+          <div class="card"><div style="font-size:11.5px;color:#96A09C;margin-bottom:5px;">${l}</div><div class="mono" style="font-size:22px;font-weight:700;color:${col};">${v}</div></div>`).join('')}
+      </div>
+      <div class="card">
+        <h4 style="font-family:'Frank Ruhl Libre',serif;font-size:14px;margin:0 0 12px;">לקוחות לפי יועץ</h4>
+        ${advisors.map(a=>{const ac=clients.filter(c=>c.advisorId===a.id);const cr=ac.reduce((s,c)=>s+analyzeClient(c).filter(i=>i.severity==="critical").length,0);return`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #2A3338;font-size:13px;"><span>${a.name}</span><div style="display:flex;gap:7px;"><span class="badge badge-default">${ac.length} לקוחות</span>${cr>0?`<span class="badge badge-crit">${cr} קריטיות</span>`:''}</div></div>`;}).join('')}
+      </div>`;
+  }
+
+  if (adminCurrentTab==='advisors') {
+    c.innerHTML = `
+      <div style="display:flex;gap:7px;margin-bottom:14px;">
+        <input type="text" id="new-adv-input" placeholder="שם יועץ חדש" style="max-width:200px;">
+        <button class="btn btn-accent btn-sm" onclick="addAdvisor()">+ הוספה</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:7px;">
+        ${advisors.map(a=>{const ac=clients.filter(c=>c.advisorId===a.id);const cr=ac.reduce((s,c)=>s+analyzeClient(c).filter(i=>i.severity==="critical").length,0);return`
+          <div class="card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+            <div><div style="font-weight:600;font-size:14px;margin-bottom:4px;">${a.name}</div><div style="display:flex;gap:7px;"><span class="badge badge-default">${ac.length} לקוחות</span>${cr>0?`<span class="badge badge-crit">${cr}</span>`:''}</div></div>
+            <button class="btn btn-crit btn-sm" onclick="removeAdvisor('${a.id}')">🗑 הסרה</button>
+          </div>`;}).join('')}
+      </div>`;
+  }
+
+  if (adminCurrentTab==='categories') {
+    c.innerHTML = `
+      <div style="display:flex;gap:7px;margin-bottom:14px;align-items:center;">
+        <input type="text" id="new-cat-input" placeholder="שם קטגוריה" style="max-width:180px;">
+        <input type="color" id="new-cat-color" value="#6FA88A" style="width:34px;height:34px;padding:2px;border:1px solid #2A3338;border-radius:6px;background:#1A2024;">
+        <button class="btn btn-accent btn-sm" onclick="addCategory()">+ הוספה</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:7px;">
+        ${categories.map(cat=>`
+          <div class="card" style="display:flex;justify-content:space-between;align-items:center;border-color:${cat.color}40;">
+            <div style="display:flex;align-items:center;gap:9px;"><div style="width:11px;height:11px;border-radius:3px;background:${cat.color};"></div><span style="font-weight:600;font-size:13.5px;">${cat.name}</span><span class="badge badge-default">${clients.filter(c=>c.categoryId===cat.id).length} לקוחות</span></div>
+            <button class="btn btn-crit btn-sm" onclick="removeCategory('${cat.id}')">🗑 הסרה</button>
+          </div>`).join('')}
+      </div>`;
+  }
+
+  if (adminCurrentTab==='all') {
+    const sharedClients = clients.filter(cl => cl.isShared === true);
+    c.innerHTML = `
+      <p style="font-size:12.5px;color:#96A09C;margin-bottom:11px;">מוצגים רק תיקים שסומנו כ"משותפים" על ידי היועצים</p>
+      ${sharedClients.length === 0 ? `<div style="text-align:center;padding:32px;color:#5E6A66;"><div style="font-size:32px;margin-bottom:10px;">🔒</div><p>אין תיקים משותפים כרגע</p></div>` :
+      `<div style="display:flex;flex-direction:column;gap:7px;">
+        ${sharedClients.map(cl=>{const cr=analyzeClient(cl).filter(i=>i.severity==="critical").length;const adv=advisors.find(a=>a.id===cl.advisorId);const cat=categories.find(x=>x.id===cl.categoryId);return`
+          <div class="card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:7px;border-color:#4C7863;">
+            <div><div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><span style="font-size:10px;color:#6FA88A;">🔓</span><span style="font-weight:600;font-size:13.5px;">${cl.name}</span></div><div style="display:flex;gap:6px;flex-wrap:wrap;">${adv?`<span class="badge badge-default">${adv.name}</span>`:''} ${cat?`<span style="font-size:11px;padding:2px 8px;border-radius:100px;background:${cat.color}20;color:${cat.color};border:1px solid ${cat.color}40;">${cat.name}</span>`:''} ${cr>0?`<span class="badge badge-crit">${cr}</span>`:''}</div></div>
+            <div style="display:flex;gap:6px;">
+              <button class="btn btn-sm" onclick="selectClient('${cl.id}');navTo('clients')">👁 צפייה</button>
+            </div>
+          </div>`;}).join('')}
+      </div>`}`;
+  }
+}
+
+async function addAdvisor() {
+  const name = document.getElementById('new-adv-input').value.trim();
+  if (!name) return;
+  await db.collection('advisors').add({name});
+  document.getElementById('new-adv-input').value='';
+}
+async function removeAdvisor(id) {
+  await db.collection('advisors').doc(id).delete();
+}
+async function addCategory() {
+  const name = document.getElementById('new-cat-input').value.trim();
+  const color = document.getElementById('new-cat-color').value;
+  if (!name) return;
+  await db.collection('categories').add({name,color});
+  document.getElementById('new-cat-input').value='';
+}
+async function removeCategory(id) {
+  await db.collection('categories').doc(id).delete();
+}
+
+// ═══════════════════════════════════
+// Modal
+// ═══════════════════════════════════
+function closeModal(id) {
+  document.getElementById(id).classList.add('hidden');
+}
+</script>
+</body>
+</html>
